@@ -1,6 +1,6 @@
 
 ---
-title: "Income and Crime Variation Over Time"
+title: "Neighborhood Disadvantage and Crime Variation Over Time"
 author: Olivia Delos
 ---
 
@@ -11,10 +11,9 @@ Crime rates have decreased for all types of crime since the 1990s, although most
 # Materials and methods
 
 1. Load required packages
-2. Download crime data from buffalony.gov and 2017 ACS estimates for race data in Erie County
+2. Download crime data from buffalony.gov and 2010 and 2017 ACS estimates for income data in Erie County
 3. Clean and join data
-4. Calculate segregation measures
-4. Run regression on types of crime and segregation
+4. Run regression on types of crime and income level
 5. Create figures
 
 ## 1. Load required packages.
@@ -48,8 +47,8 @@ med_income2017 <- get_acs(geography = "tract",
                        geometry = TRUE)
 
 
-# Load 2009 census data
-v09 <- load_variables(year = 2010, dataset = "acs5", cache = TRUE)
+# Load 2010 census data
+v10 <- load_variables(year = 2010, dataset = "acs5", cache = TRUE)
 
 med_income2010 <- get_acs(geography = "tract",
                         variables = "B19013_001",
@@ -64,6 +63,11 @@ crimetrans <- st_transform(crimesf, st_crs(med_income2017))
 
 inc_tracts <- st_join(crimetrans, select(med_income2017,NAME), st_intersects)
 
+#cityregion <- st_bbox(inc_tracts)
+# ^ I think I'm finding census limits here, NEED CRIME LIMITS
+
+#Plot crime by lat, long
+#ggplot(inc_tracts) + geom_point(aes(x = longitude, y = latitude, color = parent_incident_type)) + geom_sf()
 ```
 
 ## 3. Clean crime data
@@ -74,10 +78,19 @@ crime_date <- ymd_hms(inc_tracts$incident_datetime) %>%
   
 crime_year <- cbind(crime_date, inc_tracts, stringsAsFactors = FALSE)
 
+crime_year$parent_incident_type <- as.factor(crime_year$parent_incident_type) %>%
+  fct_collapse(crime_year$parent_incident_type, 
+                  Theft = c("Theft of Vehicle", "Theft"),
+                  Sexual_Offenses = c("Sexual Assault", "Other Sexual Offense"),
+                  Breaking_entering = "Breaking & Entering",
+                  Assault = "Assault",
+                  Homicide = "Homicide",
+                  Robbery = "Robbery")
+
 #clean/filter crime data, drop geometry
 crime2017 <- crime_year %>%
      filter(crime_date >= 2013 & crime_date <= 2017) %>%
-     group_by(NAME, crime_date, parent_incident_type) %>%
+     group_by(NAME, parent_incident_type) %>%
     summarize(total = n()) %>%
     st_set_geometry(NULL)
 
@@ -86,6 +99,8 @@ c2017_spread <- spread(crime2017, parent_incident_type, total)
 
 c2017_spread[is.na(c2017_spread)] <- 0
 
+# crime_geom <- left_join(c2017_spread, med_income2017, by = NULL)
+
 #Do the same for 2010
 crime2010 <- crime_year %>%
      filter(crime_date >= 2006 & crime_date <= 2010) %>%
@@ -93,56 +108,76 @@ crime2010 <- crime_year %>%
     summarize(total = n()) %>%
     st_set_geometry(NULL)
 
-c2010_spread <- spread(crime2010, parent_incident_type, total)
+c2010_spread <- spread(crime2010, parent_incident_type, total) %>%
+    select(-V6)
 
 c2010_spread[is.na(c2010_spread)] <- 0
 
 ```
 
-# Clean race data and join datasets
+# Clean income data and join datasets
 ```{r, cache = TRUE}
+#Remove and rename columns
 income_clean17 <- med_income2017 %>%
   select(-moe, -variable)
 
 income_clean10 <- med_income2010 %>%
   select(-moe, -variable)
+
+colnames(income_clean10)[3] <- "MedianInc"
+colnames(income_clean17)[3] <- "MedianInc"
   
 crime_income2017 <- left_join(income_clean17, c2017_spread, by = c("NAME" = "NAME"))
 
 crime_income2010 <- left_join(income_clean10, c2010_spread, by = c("NAME" = "NAME"))
+
+st_geometry(crime_income2017) <- crime_income2017$geometry
+st_geometry(crime_income2010) <- crime_income2010$geometry
+
+#Attempt to graph crime and income
+#crime_income2017 <- left_join(income_clean17, crime2017, by = c("NAME" = "NAME"))
+#st_geometry(crime_income2017) <- crime_income2017$geometry
+#ggplot(crime_income2017) + geom_point(aes(x = total, y = MedianInc, color = parent_incident_type, size = #total)) 
+
+#na.omit(crime_income2017)
+
   
 ```
 
 
 ## 4. Run regression
 ```{r, results='asis', cache = TRUE}
-regress <- lm(estimate~Assault+Homicide+Robbery, data = crime_income2010)
-summary(regress)
+#2010 regression
+regress2010 <- lm(MedianInc~Theft+Sexual_Offenses+Breaking_entering+Assault+Homicide+Robbery, data = crime_income2010)
+summary(regress2010)
 ```
 
-
+``` {r, results = 'asis',  cache = TRUE}
+#2017 regression
+regress2017 <- lm(MedianInc~Theft+Sexual_Offenses+Breaking_entering+Assault+Homicide+Robbery, data = crime_income2017)
+summary(regress2017)
+```
 
 # Results
 
 This figure is a map of median income estimates by census tracts in Erie County, NY. 
 
 ```{r, fig.width=6, fig.height=3, fig.cap="Map of median income by census tract"}
-p1 <- crime_income %>% 
-  ggplot(aes(fill = estimate)) + 
-  geom_sf()
+p1 <- crime_income2017 %>% 
+  ggplot(aes(fill = MedianInc)) +
+  geom_sf() + scale_fill_continuous(low = "red", high = "blue")
+  
+p1
+
+#Crime over time
+ggplot(crime2010) + geom_line(aes(x = crime_date, y = total, color = parent_incident_type)) + scale_x_continuous()
 
 ```
 
 This figure is a map of crime by type in 2017
 
 ```{r}
-p1 + geom_point(crime_income, aes(x = crime_date, y = Assault))
-
-ggplot(crime_income, aes(x = crime_date, y = Assault)) + geom_point()
-
-# ggplot(crime2017, aes(x = crime_date, y = total)) + geom_line(aes(color = parent_incident_type))
-
-# ggplot(crime2017, aes(color = total)) + geom_sf()
+#ggplot(crime_income2017, aes(fill = MedianInc)) + geom_sf(aes(color = parent_incident_type, size = total))
 ```
 # Conclusions
 
@@ -152,5 +187,8 @@ ggplot(crime_income, aes(x = crime_date, y = Assault)) + geom_point()
 
 Friedson, Michael and Patrick Sharkey. 2015. "Violence and Neighborhood Disadvantage after the Crime Decline." *The American Academy of Political & Social Science* 660. 
 
-Logan, John, and Deirdre Oakley. 2017. “Black Lives and Policing: The Larger Context of
-Ghettoization.” *Journal of Urban Affairs* 39:1031-1046.
+Papachristos, Andrew V. 2013. "48 Years of Crime in Chicago: A Descriptive Analysis of Serious Crime Trends from 1965 to 2013." *Institution for Social and Policy Studies*. 
+
+Van Wilsem, Johan. Karin Whitebrood, Nan Dirk De Graaf. 2006. "Socioeconomic Dynamics of Neighborhoods and the Risk of Crime Victimization: A Multilevel Study of Improving, Declining, and Stable Areas in the Netherlands." *Social Problems* 53(2):226-247.
+
+Zuberi, Anita. 2012. “Neighborhood Poverty and Children’s Exposure to Danger: Examining Gender Differences in Impacts of the Moving to Opportunity Experiment.” *Social Science Research* 41:788-801.
