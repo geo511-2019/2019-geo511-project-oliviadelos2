@@ -27,6 +27,7 @@ library(lubridate)
 library(seg)
 library(sf)
 library(tigris)
+library(plotly)
 ```
 
 ## 2. Download the data
@@ -34,7 +35,6 @@ library(tigris)
 ```{r, results="hide", cache = TRUE}
 #Load crime data
 crimesf=read_sf("https://data.buffalony.gov/api/geospatial/d6g9-xbgu?method=export&format=GeoJSON")
-
 
 #Load 2017 census data
 v17 <- load_variables(year = 2017, dataset = "acs5", cache = TRUE)
@@ -57,17 +57,19 @@ med_income2010 <- get_acs(geography = "tract",
                        year = 2010,
                        geometry = TRUE)
 
-#Transform crime geometry to match census tract
+```
 
-crimetrans <- st_transform(crimesf, st_crs(med_income2017))
+``` {r, results = "hide", cache = TRUE}
+
+#Crop census data to city limits
+income_crop2017 <- med_income2017[c(1:70, 228, 229, 221:227),]
+income_crop2010 <- med_income2010[c(1:70, 228, 229, 221:227),]
+
+#Transform crime geometry to match census tract
+crimetrans <- st_transform(crimesf, st_crs(income_crop2017))
 
 inc_tracts <- st_join(crimetrans, select(med_income2017,NAME), st_intersects)
 
-#cityregion <- st_bbox(inc_tracts)
-# ^ I think I'm finding census limits here, NEED CRIME LIMITS
-
-#Plot crime by lat, long
-#ggplot(inc_tracts) + geom_point(aes(x = longitude, y = latitude, color = parent_incident_type)) + geom_sf()
 ```
 
 ## 3. Clean crime data
@@ -78,6 +80,7 @@ crime_date <- ymd_hms(inc_tracts$incident_datetime) %>%
   
 crime_year <- cbind(crime_date, inc_tracts, stringsAsFactors = FALSE)
 
+#Recategorize crime types
 crime_year$parent_incident_type <- as.factor(crime_year$parent_incident_type) %>%
   fct_collapse(crime_year$parent_incident_type, 
                   Theft = c("Theft of Vehicle", "Theft"),
@@ -99,12 +102,10 @@ c2017_spread <- spread(crime2017, parent_incident_type, total)
 
 c2017_spread[is.na(c2017_spread)] <- 0
 
-# crime_geom <- left_join(c2017_spread, med_income2017, by = NULL)
-
 #Do the same for 2010
 crime2010 <- crime_year %>%
      filter(crime_date >= 2006 & crime_date <= 2010) %>%
-     group_by(NAME, crime_date, parent_incident_type) %>%
+     group_by(NAME, parent_incident_type) %>%
     summarize(total = n()) %>%
     st_set_geometry(NULL)
 
@@ -118,10 +119,10 @@ c2010_spread[is.na(c2010_spread)] <- 0
 # Clean income data and join datasets
 ```{r, cache = TRUE}
 #Remove and rename columns
-income_clean17 <- med_income2017 %>%
+income_clean17 <- income_crop2017 %>%
   select(-moe, -variable)
 
-income_clean10 <- med_income2010 %>%
+income_clean10 <- income_crop2010 %>%
   select(-moe, -variable)
 
 colnames(income_clean10)[3] <- "MedianInc"
@@ -131,17 +132,18 @@ crime_income2017 <- left_join(income_clean17, c2017_spread, by = c("NAME" = "NAM
 
 crime_income2010 <- left_join(income_clean10, c2010_spread, by = c("NAME" = "NAME"))
 
-st_geometry(crime_income2017) <- crime_income2017$geometry
-st_geometry(crime_income2010) <- crime_income2010$geometry
-
-#Attempt to graph crime and income
-#crime_income2017 <- left_join(income_clean17, crime2017, by = c("NAME" = "NAME"))
 #st_geometry(crime_income2017) <- crime_income2017$geometry
-#ggplot(crime_income2017) + geom_point(aes(x = total, y = MedianInc, color = parent_incident_type, size = #total)) 
+#st_geometry(crime_income2010) <- crime_income2010$geometry
 
-#na.omit(crime_income2017)
+#Find mean crime per tract
+crimeAvg2017 <- crime_income2017 %>%
+  group_by(NAME, MedianInc) %>%
+  summarize(meancrime = mean(c(Assault, Breaking_entering, Homicide, Sexual_Offenses, Robbery, Theft)))
 
-  
+crimeAvg2010 <- crime_income2010 %>%
+  group_by(NAME, MedianInc) %>%
+  summarize(meancrime = mean(c(Assault, Breaking_entering, Homicide, Sexual_Offenses, Robbery, Theft)))
+
 ```
 
 
@@ -152,32 +154,39 @@ regress2010 <- lm(MedianInc~Theft+Sexual_Offenses+Breaking_entering+Assault+Homi
 summary(regress2010)
 ```
 
-``` {r, results = 'asis',  cache = TRUE}
+``` {r, results = 'asis', cache = TRUE}
 #2017 regression
 regress2017 <- lm(MedianInc~Theft+Sexual_Offenses+Breaking_entering+Assault+Homicide+Robbery, data = crime_income2017)
 summary(regress2017)
+
+#Plot relationship between crime and income 2017
+ggplot(crime_income2017) + geom_point(aes(x = MedianInc, y = total, color = parent_incident_type))
 ```
 
 # Results
 
-This figure is a map of median income estimates by census tracts in Erie County, NY. 
 
-```{r, fig.width=6, fig.height=3, fig.cap="Map of median income by census tract"}
-p1 <- crime_income2017 %>% 
+## Plot median income for both years
+This figure is a map of median income estimates for 2017 by census tracts in Buffalo, NY
+```{r, fig.width=10, fig.height=5, fig.cap="Map of median income by census tract"}
+
+crime_income2010 %>%
   ggplot(aes(fill = MedianInc)) +
-  geom_sf() + scale_fill_continuous(low = "red", high = "blue")
-  
-p1
+  geom_sf() + scale_fill_viridis_c()
 
 #Crime over time
-ggplot(crime2010) + geom_line(aes(x = crime_date, y = total, color = parent_incident_type)) + scale_x_continuous()
+
+#maybe average crime types group by year and then summarize across tracts
+#ggplot(crime2010) + geom_line(aes(x = crime_date, y = total, color = parent_incident_type, group = NAME))
 
 ```
 
 This figure is a map of crime by type in 2017
 
 ```{r}
-#ggplot(crime_income2017, aes(fill = MedianInc)) + geom_sf(aes(color = parent_incident_type, size = total))
+crime_income2017 %>% 
+  ggplot(aes(fill = MedianInc)) +
+  geom_sf() + scale_fill_viridis_c()
 ```
 # Conclusions
 
