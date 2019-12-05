@@ -464,12 +464,11 @@ crime_year &lt;- cbind(crime_date, inc_tracts, stringsAsFactors = FALSE)
 #Recategorize crime types
 crime_year$parent_incident_type &lt;- as.factor(crime_year$parent_incident_type) %&gt;%
   fct_collapse(crime_year$parent_incident_type, 
-                  Theft = c(&quot;Theft of Vehicle&quot;, &quot;Theft&quot;),
+                  Theft = c(&quot;Theft of Vehicle&quot;, &quot;Theft&quot;, &quot;Robbery&quot;),
                   Sexual_Offenses = c(&quot;Sexual Assault&quot;, &quot;Other Sexual Offense&quot;),
                   Breaking_entering = &quot;Breaking &amp; Entering&quot;,
                   Assault = &quot;Assault&quot;,
-                  Homicide = &quot;Homicide&quot;,
-                  Robbery = &quot;Robbery&quot;)
+                  Homicide = &quot;Homicide&quot;)
 
 #clean/filter crime data, drop geometry
 crime2017 &lt;- crime_year %&gt;%
@@ -493,8 +492,7 @@ crime2010 &lt;- crime_year %&gt;%
 c2010_spread &lt;- spread(crime2010, parent_incident_type, total)
 
 c2010_spread[is.na(c2010_spread)] &lt;- 0</code></pre>
-<div id="clean-income-data-and-join-datasets" class="section level3">
-<h3>Clean income data and join datasets</h3>
+<p>Clean income data and join datasets</p>
 <pre class="r"><code>#Remove and rename columns
 income_clean17 &lt;- income_crop2017 %&gt;%
   select(-moe, -variable, -GEOID)
@@ -523,14 +521,14 @@ inc_pop2017 &lt;- cbind(income_clean17, pop2017_clean) %&gt;%
 
 inc_pop2010 &lt;- cbind(income_clean10, pop2010_clean) %&gt;%
   select(-NAME.1, -geometry.1)</code></pre>
-<pre class="r"><code>#Find mean total crime per tract ??? DO I NEED THIS
+<pre class="r"><code>#Find mean total crime per tract
 crimeAvg2017 &lt;- crime_income2017 %&gt;%
   group_by(NAME, MedianInc) %&gt;%
-  summarize(meancrime = mean(c(Assault, Breaking_entering, Sexual_Offenses, Robbery, Theft)))
+  summarize(meancrime = mean(c(Assault, Breaking_entering, Sexual_Offenses, Theft)))
 
 crimeAvg2010 &lt;- crime_income2010 %&gt;%
   group_by(NAME, MedianInc) %&gt;%
-  summarize(meancrime = mean(c(Assault, Breaking_entering, Sexual_Offenses, Robbery, Theft)))
+  summarize(meancrime = mean(c(Assault, Breaking_entering, Sexual_Offenses, Theft)))
 
 #Calculate crime rate per population
 cpp17 &lt;- crimeAvg2017[ order(match(crimeAvg2017$NAME, inc_pop2017$NAME)),]
@@ -548,55 +546,167 @@ cpp2017 &lt;- crime_pop2017 %&gt;%
 
 cpp2010 &lt;- crime_pop2010 %&gt;%
   mutate(AvgCPC = (meancrime/Population))</code></pre>
+<pre class="r"><code>#Join population and crime_spread 2010
+crimetype_pop10 &lt;- cbind(crime_income2010, pop2010_clean)
+
+avghom2010 &lt;- crimetype_pop10 %&gt;%
+  mutate(AvgHom = (Homicide/Population))
+
+#Join population and crime_spread 2017
+crimetype_pop17 &lt;- cbind(crime_income2017, pop2017_clean)
+
+avghom2017 &lt;- crimetype_pop17 %&gt;%
+  mutate(AvgHom = (Homicide/Population))</code></pre>
 </div>
-</div>
-<div id="run-regression" class="section level2">
-<h2>4. Run Regression</h2>
+<div id="run-regressionplot-the-relationship-between-crime-and-median-income" class="section level2">
+<h2>4. Run regression/Plot the relationship between crime and median income</h2>
 <pre class="r"><code>#2010 regression
 ggplot(cpp2010) + geom_point(aes(x = MedianInc, y = AvgCPC)) +
-  labs(x = &quot;Median Income 2010&quot;, y = &quot;Crime Per Capita 2010&quot;)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
-<pre class="r"><code>ggplot(cpp2017) + geom_point(aes(x = MedianInc, y = AvgCPC)) +
-  labs(x = &quot;Median Income 2017&quot;, y = &quot;Crime Per Capita 2017&quot;)</code></pre>
+  labs(x = &quot;Median Income 2010&quot;, y = &quot;Crime Per Capita 2010&quot;, title = &quot;Relationship between Median Income and Crime Per Capita in 2010&quot;)</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<pre class="r"><code>ggplot(cpp2017) + geom_point(aes(x = MedianInc, y = AvgCPC)) +
+  labs(x = &quot;Median Income 2017&quot;, y = &quot;Crime Per Capita 2017&quot;, title = &quot;Relationship between Median Income and Crime Per Capita in 2017&quot;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
 <pre class="r"><code>#2017 regression
-#regress2017 &lt;- lm(Theft~MedianInc, data = crime_income2017)
-#summary(regress2017)
-
-#Plot relationship between crime and income 2017
-#ggplot(crime_income2017) + geom_point(aes(x = MedianInc, y = total, color = parent_incident_type))</code></pre>
+Assault2017_reg &lt;- lm(Assault~MedianInc, data = crimetype_pop17)
+summary(Assault2017_reg)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = Assault ~ MedianInc, data = crimetype_pop17)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -320.18  -91.58  -39.52   77.83  630.35 
+## 
+## Coefficients:
+##               Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) 340.070193  49.594980   6.857 1.55e-09 ***
+## MedianInc    -0.005114   0.002156  -2.373   0.0202 *  
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 148.9 on 77 degrees of freedom
+## Multiple R-squared:  0.06812,    Adjusted R-squared:  0.05602 
+## F-statistic: 5.629 on 1 and 77 DF,  p-value: 0.02016</code></pre>
+<pre class="r"><code>Theft2017_reg &lt;- lm(Theft~MedianInc, data = crimetype_pop17)
+summary(Theft2017_reg)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = Theft ~ MedianInc, data = crimetype_pop17)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -544.48 -258.01  -60.03  164.36 1959.41 
+## 
+## Coefficients:
+##              Estimate Std. Error t value Pr(&gt;|t|)   
+## (Intercept) 4.511e+02  1.328e+02   3.398  0.00108 **
+## MedianInc   7.752e-03  5.771e-03   1.343  0.18314   
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 398.6 on 77 degrees of freedom
+## Multiple R-squared:  0.0229, Adjusted R-squared:  0.01021 
+## F-statistic: 1.804 on 1 and 77 DF,  p-value: 0.1831</code></pre>
+<pre class="r"><code>BE2017_reg &lt;- lm(Breaking_entering~MedianInc, data = crimetype_pop17)
+summary(BE2017_reg)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = Breaking_entering ~ MedianInc, data = crimetype_pop17)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -280.14  -63.85  -21.76   55.94  415.50 
+## 
+## Coefficients:
+##               Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) 294.663328  37.309057   7.898  1.6e-11 ***
+## MedianInc    -0.004244   0.001622  -2.617   0.0107 *  
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 112 on 77 degrees of freedom
+## Multiple R-squared:  0.08168,    Adjusted R-squared:  0.06976 
+## F-statistic: 6.849 on 1 and 77 DF,  p-value: 0.01067</code></pre>
+<pre class="r"><code>#No correlation
+SO2017_reg &lt;- lm(Sexual_Offenses~MedianInc, data = crimetype_pop17)
+summary(SO2017_reg)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = Sexual_Offenses ~ MedianInc, data = crimetype_pop17)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -23.694  -9.379  -3.715   7.705  76.810 
+## 
+## Coefficients:
+##               Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) 25.9257386  4.8525795   5.343 9.02e-07 ***
+## MedianInc   -0.0002760  0.0002109  -1.308    0.195    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 14.57 on 77 degrees of freedom
+## Multiple R-squared:  0.02175,    Adjusted R-squared:  0.009047 
+## F-statistic: 1.712 on 1 and 77 DF,  p-value: 0.1946</code></pre>
+<pre class="r"><code>#Highest correlation
+Hom2017_reg &lt;- lm(Homicide~MedianInc, data = crimetype_pop17)
+summary(Hom2017_reg)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = Homicide ~ MedianInc, data = crimetype_pop17)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -6.7832 -2.4382 -0.6611  1.5548  8.3505 
+## 
+## Coefficients:
+##               Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)  7.246e+00  1.129e+00   6.415 1.04e-08 ***
+## MedianInc   -1.703e-04  4.909e-05  -3.470 0.000856 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 3.39 on 77 degrees of freedom
+## Multiple R-squared:  0.1352, Adjusted R-squared:  0.124 
+## F-statistic: 12.04 on 1 and 77 DF,  p-value: 0.0008559</code></pre>
+<pre class="r"><code>#Plot relationship between homicide and crime
+ggplot(avghom2017) + geom_point(aes(x = MedianInc, y = Homicide)) + labs(x = &quot;Median Income 2017&quot;, y = &quot;Crime Per Capita 2017&quot;, title = &quot;Relationship between Median Income and Homicide Per Capita in 2017&quot;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-9-2.png" width="672" /></p>
 </div>
 </div>
 <div id="results" class="section level1">
 <h1>Results</h1>
-<div id="plot-median-income-and-crime-per-capita-for-2010-and-2017" class="section level2">
-<h2>Plot median income and crime per capita for 2010 and 2017</h2>
+<div id="plot-median-income-and-crime-per-capita-for-2010-and-2017" class="section level3">
+<h3>Plot median income and crime per capita for 2010 and 2017</h3>
 <p>This figure is a map of median income and median crime for 2010 by census tract in Buffalo, NY</p>
 <pre class="r"><code>mapinc10 &lt;- ggplot(cpp2010) + geom_sf(aes(fill = MedianInc)) +
-  scale_fill_viridis_c() + labs(fill = &quot;Median Income&quot;)
+  scale_fill_viridis_c() + labs(fill = &quot;Median Income&quot;) +
+  theme(panel.background = element_blank())
 
 mapcrime10 &lt;- ggplot(cpp2010) + geom_sf(aes(fill = AvgCPC)) + 
-  scale_fill_viridis_c() + labs(fill = &quot;Average CPC&quot;)
+  scale_fill_viridis_c() + labs(fill = &quot;Average CPC&quot;) +
+  theme(panel.background = element_blank())
 
 grid.arrange(mapinc10, mapcrime10, nrow = 1)</code></pre>
 <div class="figure">
-<img src="index_files/figure-html/unnamed-chunk-10-1.png" alt="2010 Income and Crime" width="960" />
+<img src="index_files/figure-html/unnamed-chunk-11-1.png" alt="2010 Income and Crime" width="960" />
 <p class="caption">
 2010 Income and Crime
 </p>
 </div>
-<pre class="r"><code>#maybe average crime types group by year and then summarize across tracts
-#ggplot(crime2010) + geom_line(aes(x = crime_date, y = total, color = parent_incident_type, group = NAME))</code></pre>
 <p>This figure is a map of median income and median crime for 2017 by census tract in Buffalo, NY</p>
 <pre class="r"><code>mapinc17 &lt;- ggplot(cpp2017) + geom_sf(aes(fill = MedianInc)) +
-  scale_fill_viridis_c() + labs(fill = &quot;Median Income&quot;)
+  scale_fill_viridis_c() + labs(fill = &quot;Median Income&quot;) + 
+  theme(panel.background = element_blank())
 
 mapcrime17 &lt;- ggplot(cpp2017) + geom_sf(aes(fill = AvgCPC)) + 
-  scale_fill_viridis_c() + labs(fill = &quot;Average CPC&quot;)
+  scale_fill_viridis_c() + labs(fill = &quot;Average CPC&quot;) +
+  theme(panel.background = element_blank())
 
 grid.arrange(mapinc17, mapcrime17, nrow = 1)</code></pre>
 <div class="figure">
-<img src="index_files/figure-html/unnamed-chunk-11-1.png" alt="2017 Income and Crime" width="960" />
+<img src="index_files/figure-html/unnamed-chunk-12-1.png" alt="2017 Income and Crime" width="960" />
 <p class="caption">
 2017 Income and Crime
 </p>
@@ -604,10 +714,25 @@ grid.arrange(mapinc17, mapcrime17, nrow = 1)</code></pre>
 </div>
 <div id="plot-crime-by-type" class="section level2">
 <h2>Plot crime by type</h2>
+<p>Homicide 2010</p>
+<pre class="r"><code>hom2010map &lt;- ggplot(avghom2010) + geom_sf(aes(fill = AvgHom)) + scale_fill_viridis_c() + 
+  theme(panel.background = element_blank()) +
+  labs(fill = &quot;Avg Homicide PC&quot;)
+
+grid.arrange(mapinc17, hom2010map, nrow = 1)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-13-1.png" width="960" /></p>
+<p>Homicide 2017</p>
+<pre class="r"><code>hom2017map &lt;- ggplot(avghom2017) + geom_sf(aes(fill = AvgHom)) + scale_fill_viridis_c() +
+  theme(panel.background = element_blank()) +
+  labs(fill = &quot;Avg Homicide PC&quot;)
+
+grid.arrange(mapinc17, hom2017map, nrow = 1)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-14-1.png" width="960" /></p>
 </div>
 </div>
 <div id="conclusions" class="section level1">
 <h1>Conclusions</h1>
+<p>Overall, it does not seem like median income alone has a large impact on crime. However, the relationship between crime and median income is higher when examining violent crimes, particularly in 2017. Median income was statistically correlated with homicide, assault, and breaking &amp; entering, but not theft or sexual offenses for 2017.</p>
 </div>
 <div id="references" class="section level1">
 <h1>References</h1>
