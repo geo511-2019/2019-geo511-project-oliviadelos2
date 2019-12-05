@@ -25,6 +25,7 @@
 <link href="site_libs/tocify-1.9.1/jquery.tocify.css" rel="stylesheet" />
 <script src="site_libs/tocify-1.9.1/jquery.tocify.js"></script>
 <script src="site_libs/navigation-1.1/tabsets.js"></script>
+<script src="site_libs/navigation-1.1/codefolding.js"></script>
 <link href="site_libs/highlightjs-9.12.0/textmate.css" rel="stylesheet" />
 <script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
 
@@ -250,6 +251,9 @@ $(document).ready(function () {
 </style>
 
 <!-- code folding -->
+<style type="text/css">
+.code-folding-btn { margin-bottom: 4px; }
+</style>
 
 
 
@@ -356,6 +360,14 @@ div.tocify {
 
 <div class="fluid-row" id="header">
 
+<div class="btn-group pull-right">
+<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><span>Code</span> <span class="caret"></span></button>
+<ul class="dropdown-menu" style="min-width: 50px;">
+<li><a id="rmd-show-all-code" href="#">Show All Code</a></li>
+<li><a id="rmd-hide-all-code" href="#">Hide All Code</a></li>
+</ul>
+</div>
+
 
 
 <h1 class="title toc-ignore">Neighborhood Disadvantage and Crime Variation Over Time</h1>
@@ -400,14 +412,21 @@ crimesf=read_sf(&quot;https://data.buffalony.gov/api/geospatial/d6g9-xbgu?method
 v17 &lt;- load_variables(year = 2017, dataset = &quot;acs5&quot;, cache = TRUE)
 
 med_income2017 &lt;- get_acs(geography = &quot;tract&quot;,
-                        variables = &quot;B06011_001&quot;,
+                        variables = c(medianinc = &quot;B06011_001&quot;),
                        state = &quot;NY&quot;,
                        county = &quot;Erie&quot;,
                        year = 2017,
-                       geometry = TRUE)</code></pre>
-<pre><code>## Getting data from the 2013-2017 5-year ACS</code></pre>
-<pre><code>## Downloading feature geometry from the Census website.  To cache shapefiles for use in future sessions, set `options(tigris_use_cache = TRUE)`.</code></pre>
-<pre class="r"><code># Load 2010 census data
+                       geometry = TRUE)
+
+totalpop2017 &lt;- get_acs(geography = &quot;tract&quot;,
+                        variables = c(totalpop = &quot;B01003_001&quot;),
+                       state = &quot;NY&quot;,
+                       county = &quot;Erie&quot;,
+                       year = 2017,
+                       geometry = TRUE)
+
+
+# Load 2010 census data
 v10 &lt;- load_variables(year = 2010, dataset = &quot;acs5&quot;, cache = TRUE)
 
 med_income2010 &lt;- get_acs(geography = &quot;tract&quot;,
@@ -415,18 +434,24 @@ med_income2010 &lt;- get_acs(geography = &quot;tract&quot;,
                        state = &quot;NY&quot;,
                        county = &quot;Erie&quot;,
                        year = 2010,
+                       geometry = TRUE)
+
+totalpop2010 &lt;- get_acs(geography = &quot;tract&quot;,
+                        variables = c(totalpop = &quot;B01003_001&quot;),
+                       state = &quot;NY&quot;,
+                       county = &quot;Erie&quot;,
+                       year = 2010,
                        geometry = TRUE)</code></pre>
-<pre><code>## Getting data from the 2006-2010 5-year ACS
-## Downloading feature geometry from the Census website.  To cache shapefiles for use in future sessions, set `options(tigris_use_cache = TRUE)`.</code></pre>
 <pre class="r"><code>#Crop census data to city limits
 income_crop2017 &lt;- med_income2017[c(1:70, 228, 229, 221:227),]
 income_crop2010 &lt;- med_income2010[c(1:70, 228, 229, 221:227),]
+totalpop17 &lt;- totalpop2017[c(1:70, 228, 229, 221:227),]
+totalpop10 &lt;- totalpop2010[c(1:70, 228, 229, 221:227),]
 
 #Transform crime geometry to match census tract
 crimetrans &lt;- st_transform(crimesf, st_crs(income_crop2017))
 
 inc_tracts &lt;- st_join(crimetrans, select(med_income2017,NAME), st_intersects)</code></pre>
-<pre><code>## although coordinates are longitude/latitude, st_intersects assumes that they are planar</code></pre>
 </div>
 <div id="clean-crime-data" class="section level2">
 <h2>3. Clean crime data</h2>
@@ -448,7 +473,7 @@ crime_year$parent_incident_type &lt;- as.factor(crime_year$parent_incident_type)
 
 #clean/filter crime data, drop geometry
 crime2017 &lt;- crime_year %&gt;%
-     filter(crime_date &gt;= 2013 &amp; crime_date &lt;= 2017) %&gt;%
+     filter(crime_date == 2017) %&gt;%
      group_by(NAME, parent_incident_type) %&gt;%
     summarize(total = n()) %&gt;%
     st_set_geometry(NULL)
@@ -460,13 +485,12 @@ c2017_spread[is.na(c2017_spread)] &lt;- 0
 
 #Do the same for 2010
 crime2010 &lt;- crime_year %&gt;%
-     filter(crime_date &gt;= 2006 &amp; crime_date &lt;= 2010) %&gt;%
+     filter(crime_date == 2010) %&gt;%
      group_by(NAME, parent_incident_type) %&gt;%
     summarize(total = n()) %&gt;%
     st_set_geometry(NULL)
 
-c2010_spread &lt;- spread(crime2010, parent_incident_type, total) %&gt;%
-    select(-V6)
+c2010_spread &lt;- spread(crime2010, parent_incident_type, total)
 
 c2010_spread[is.na(c2010_spread)] &lt;- 0</code></pre>
 </div>
@@ -475,32 +499,74 @@ c2010_spread[is.na(c2010_spread)] &lt;- 0</code></pre>
 <h1>Clean income data and join datasets</h1>
 <pre class="r"><code>#Remove and rename columns
 income_clean17 &lt;- income_crop2017 %&gt;%
-  select(-moe, -variable)
+  select(-moe, -variable, -GEOID)
 
 income_clean10 &lt;- income_crop2010 %&gt;%
-  select(-moe, -variable)
+  select(-moe, -variable, -GEOID)
 
-colnames(income_clean10)[3] &lt;- &quot;MedianInc&quot;
-colnames(income_clean17)[3] &lt;- &quot;MedianInc&quot;
+pop2017_clean &lt;- totalpop17 %&gt;%
+  select(-moe, -variable, -GEOID)
   
-crime_income2017 &lt;- left_join(income_clean17, c2017_spread, by = c(&quot;NAME&quot; = &quot;NAME&quot;))
+pop2010_clean &lt;- totalpop10 %&gt;%
+  select(-moe, -variable, -GEOID)
 
+colnames(income_clean10)[2] &lt;- &quot;MedianInc&quot;
+colnames(income_clean17)[2] &lt;- &quot;MedianInc&quot;
+colnames(pop2017_clean)[2] &lt;- &quot;Population&quot;
+colnames(pop2010_clean)[2] &lt;- &quot;Population&quot;
+
+#Join income and crime spread
+crime_income2017 &lt;- left_join(income_clean17, c2017_spread, by = c(&quot;NAME&quot; = &quot;NAME&quot;))
 crime_income2010 &lt;- left_join(income_clean10, c2010_spread, by = c(&quot;NAME&quot; = &quot;NAME&quot;))
 
-#st_geometry(crime_income2017) &lt;- crime_income2017$geometry
-#st_geometry(crime_income2010) &lt;- crime_income2010$geometry
+#Join income and population
+inc_pop2017 &lt;- cbind(income_clean17, pop2017_clean) %&gt;%
+  select(-NAME.1, -geometry.1)
 
-#Find mean crime per tract
+inc_pop2010 &lt;- cbind(income_clean10, pop2010_clean) %&gt;%
+  select(-NAME.1, -geometry.1)</code></pre>
+<pre class="r"><code>#Find mean total crime per tract ??? DO I NEED THIS
 crimeAvg2017 &lt;- crime_income2017 %&gt;%
   group_by(NAME, MedianInc) %&gt;%
   summarize(meancrime = mean(c(Assault, Breaking_entering, Homicide, Sexual_Offenses, Robbery, Theft)))
 
 crimeAvg2010 &lt;- crime_income2010 %&gt;%
   group_by(NAME, MedianInc) %&gt;%
-  summarize(meancrime = mean(c(Assault, Breaking_entering, Homicide, Sexual_Offenses, Robbery, Theft)))</code></pre>
+  summarize(meancrime = mean(c(Assault, Breaking_entering, Homicide, Sexual_Offenses, Robbery, Theft)))
+
+#Calculate crime rate per population
+crime_pop2017 &lt;- left_join(inc_pop2017, crime2017, by = &quot;NAME&quot;)
+
+crime_pop2010 &lt;- left_join(pop2010_clean, crime2010, by = &quot;NAME&quot;)
+
+cpp2017 &lt;- crime_pop2017 %&gt;%
+  mutate(CrimePerCapita = (total/Population)) %&gt;%
+  group_by(NAME) %&gt;%
+  summarize(meancpp = mean(CrimePerCapita))
+
+cpp2010 &lt;- crime_pop2010 %&gt;%
+  mutate(CrimePerCapita = (total/Population)) %&gt;%
+  group_by(NAME) %&gt;%
+  summarize(meancpp = mean(CrimePerCapita))
+
+cpp17 &lt;- cpp2017[ order(match(cpp2017$NAME, income_clean17$NAME)),]
+cpp10 &lt;- cpp2010[ order(match(cpp2010$NAME, income_clean10$NAME)),]
+
+#Join income crime and income
+income_cpp17 &lt;- cbind(cpp17, income_clean17) %&gt;%
+  select(-NAME.1, -geometry.1)
+
+income_cpp10 &lt;- cbind(cpp10, income_clean10) %&gt;%
+  select(-NAME.1, -geometry.1)</code></pre>
 <div id="run-regression" class="section level2">
-<h2>4. Run regression</h2>
-<pre class="r"><code>#2010 regression</code></pre>
+<h2>4. Run Regression</h2>
+<pre class="r"><code>#2010 regression
+ggplot(income_cpp10) + geom_point(aes(x = MedianInc, y = meancpp)) +
+  labs(x = &quot;Median Income 2010&quot;, y = &quot;Crime Per Capita 2010&quot;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<pre class="r"><code>ggplot(income_cpp17) + geom_point(aes(x = MedianInc, y = meancpp)) +
+  labs(x = &quot;Median Income 2017&quot;, y = &quot;Crime Per Capita 2017&quot;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
 <pre class="r"><code>#2017 regression
 #regress2017 &lt;- lm(Theft~MedianInc, data = crime_income2017)
 #summary(regress2017)
@@ -511,18 +577,18 @@ crimeAvg2010 &lt;- crime_income2010 %&gt;%
 </div>
 <div id="results" class="section level1">
 <h1>Results</h1>
-<div id="plot-median-income-for-both-years" class="section level2">
-<h2>Plot median income for both years</h2>
-<p>This figure is a map of median income and median crime for 2017 by census tract in Buffalo, NY</p>
-<pre class="r"><code>mapinc10 &lt;- ggplot(crime_income2010) + geom_sf(aes(fill = MedianInc)) +
+<div id="plot-median-income-and-crime-per-capita-for-2010-and-2017" class="section level2">
+<h2>Plot median income and crime per capita for 2010 and 2017</h2>
+<p>This figure is a map of median income and median crime for 2010 by census tract in Buffalo, NY</p>
+<pre class="r"><code>mapinc10 &lt;- ggplot(income_cpp10) + geom_sf(aes(fill = MedianInc)) +
   scale_fill_viridis_c() + labs(fill = &quot;Median Income&quot;)
 
-mapcrime10 &lt;- ggplot(crimeAvg2010) + geom_sf(aes(fill = meancrime)) + 
-  scale_fill_viridis_c() + labs(fill = &quot;Average Crime&quot;)
+mapcrime10 &lt;- ggplot(income_cpp10) + geom_sf(aes(fill = meancpp)) + 
+  scale_fill_viridis_c() + labs(fill = &quot;Average CPC&quot;)
 
 grid.arrange(mapinc10, mapcrime10, nrow = 1)</code></pre>
 <div class="figure">
-<img src="index_files/figure-html/unnamed-chunk-8-1.png" alt="2010 Income and Crime" width="960" />
+<img src="index_files/figure-html/unnamed-chunk-10-1.png" alt="2010 Income and Crime" width="960" />
 <p class="caption">
 2010 Income and Crime
 </p>
@@ -530,19 +596,22 @@ grid.arrange(mapinc10, mapcrime10, nrow = 1)</code></pre>
 <pre class="r"><code>#maybe average crime types group by year and then summarize across tracts
 #ggplot(crime2010) + geom_line(aes(x = crime_date, y = total, color = parent_incident_type, group = NAME))</code></pre>
 <p>This figure is a map of median income and median crime for 2017 by census tract in Buffalo, NY</p>
-<pre class="r"><code>mapinc17 &lt;- ggplot(crime_income2017) + geom_sf(aes(fill = MedianInc)) +
-  scale_fill_viridis_c() + labs(fill = &quot;Median Income&quot;)
+<pre class="r"><code>mapinc17 &lt;- ggplot(income_cpp17) + geom_sf(aes(fill = MedianInc)) +
+  scale_fill_viridis_c(limits=c(10000,70000)) + labs(fill = &quot;Median Income&quot;)
 
-mapcrime17 &lt;- ggplot(crimeAvg2017) + geom_sf(aes(fill = meancrime)) + 
-  scale_fill_viridis_c() + labs(fill = &quot;Average Crime&quot;)
+mapcrime17 &lt;- ggplot(income_cpp17) + geom_sf(aes(fill = meancpp)) + 
+  scale_fill_viridis_c() + labs(fill = &quot;Average CPC&quot;)
 
-grid.arrange(mapinc10, mapcrime10, nrow = 1)</code></pre>
+grid.arrange(mapinc17, mapcrime17, nrow = 1)</code></pre>
 <div class="figure">
-<img src="index_files/figure-html/unnamed-chunk-9-1.png" alt="2017 Income and Crime" width="960" />
+<img src="index_files/figure-html/unnamed-chunk-11-1.png" alt="2017 Income and Crime" width="960" />
 <p class="caption">
 2017 Income and Crime
 </p>
 </div>
+</div>
+<div id="plot-crime-by-type" class="section level2">
+<h2>Plot crime by type</h2>
 </div>
 </div>
 <div id="conclusions" class="section level1">
@@ -604,6 +673,11 @@ $(document).ready(function () {
 </script>
 
 <!-- code folding -->
+<script>
+$(document).ready(function () {
+  window.initializeCodeFolding("hide" === "show");
+});
+</script>
 
 <script>
 $(document).ready(function ()  {
