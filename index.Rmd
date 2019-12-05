@@ -28,6 +28,7 @@ library(seg)
 library(sf)
 library(tigris)
 library(plotly)
+library(gridExtra)
 ```
 
 ## 2. Download the data
@@ -73,7 +74,7 @@ inc_tracts <- st_join(crimetrans, select(med_income2017,NAME), st_intersects)
 ```
 
 ## 3. Clean crime data
-```{r, cache = TRUE}
+```{r, cache = TRUE,results="hide"}
 #extract year from date
 crime_date <- ymd_hms(inc_tracts$incident_datetime) %>%
     year()
@@ -150,47 +151,52 @@ crimeAvg2010 <- crime_income2010 %>%
 ## 4. Run regression
 ```{r, results='asis', cache = TRUE}
 #2010 regression
-regress2010 <- lm(MedianInc~Theft+Sexual_Offenses+Breaking_entering+Assault+Homicide+Robbery, data = crime_income2010)
-summary(regress2010)
+
 ```
 
 ``` {r, results = 'asis', cache = TRUE}
 #2017 regression
-regress2017 <- lm(MedianInc~Theft+Sexual_Offenses+Breaking_entering+Assault+Homicide+Robbery, data = crime_income2017)
-summary(regress2017)
+#regress2017 <- lm(Theft~MedianInc, data = crime_income2017)
+#summary(regress2017)
 
 #Plot relationship between crime and income 2017
-ggplot(crime_income2017) + geom_point(aes(x = MedianInc, y = total, color = parent_incident_type))
+#ggplot(crime_income2017) + geom_point(aes(x = MedianInc, y = total, color = parent_incident_type))
 ```
 
 # Results
 
 
 ## Plot median income for both years
-This figure is a map of median income estimates for 2017 by census tracts in Buffalo, NY
-```{r, fig.width=10, fig.height=5, fig.cap="Map of median income by census tract"}
+This figure is a map of median income and median crime for 2017 by census tract in Buffalo, NY
+```{r, fig.width=10, fig.height=5, fig.cap="2010 Income and Crime"}
 
-crime_income2010 %>%
-  ggplot(aes(fill = MedianInc)) +
-  geom_sf() + scale_fill_viridis_c()
+mapinc10 <- ggplot(crime_income2010) + geom_sf(aes(fill = MedianInc)) +
+  scale_fill_viridis_c() + labs(fill = "Median Income")
 
-#Crime over time
+mapcrime10 <- ggplot(crimeAvg2010) + geom_sf(aes(fill = meancrime)) + 
+  scale_fill_viridis_c() + labs(fill = "Average Crime")
 
+grid.arrange(mapinc10, mapcrime10, nrow = 1)
 #maybe average crime types group by year and then summarize across tracts
 #ggplot(crime2010) + geom_line(aes(x = crime_date, y = total, color = parent_incident_type, group = NAME))
 
 ```
 
-This figure is a map of crime by type in 2017
+This figure is a map of median income and median crime for 2017 by census tract in Buffalo, NY
+```{r, fig.width=10, fig.height=5, fig.cap="2017 Income and Crime"}
+mapinc17 <- ggplot(crime_income2017) + geom_sf(aes(fill = MedianInc)) +
+  scale_fill_viridis_c() + labs(fill = "Median Income")
 
-```{r}
-crime_income2017 %>% 
-  ggplot(aes(fill = MedianInc)) +
-  geom_sf() + scale_fill_viridis_c()
+mapcrime17 <- ggplot(crimeAvg2017) + geom_sf(aes(fill = meancrime)) + 
+  scale_fill_viridis_c() + labs(fill = "Average Crime")
+
+grid.arrange(mapinc10, mapcrime10, nrow = 1)
+
+  
 ```
+
+
 # Conclusions
-
-
 
 # References
 
