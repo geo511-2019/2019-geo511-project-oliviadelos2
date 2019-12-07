@@ -5,7 +5,7 @@ author: "Olivia Delos"
 ---
 
 # Introduction
-Crime rates have decreased for all types of crime since the 1990s, although most considerably for violent crimes (Papachristos 2013). However, crime rates vary depending on the social composition of a neighborhood. Disadvantaged neighborhoods are disproportionately low-income with weak social ties and high residential instability (Zuberi 2012). The concentration of poverty, violence, and high policing in disadvantaged neighborhoods hinder residents’ ability to form social cohesion and community organization, increasing residents’ risk of victimization and limiting social control (Van Wilsem, Wittebrood, De Graaf 2006). Disadvantaged neighborhoods are also often policed at higher rates than their counterparts. The high poverty and policing combined with lack of social control and low social cohesion in disadvantaged neighborhoods leads to increased crime rates in these areas (Van Wilsem et al. 2006). Violent crime, in particular, is more prevalent in urban, disadvantaged neighborhoods (Friedson and Sharkey 2015). However, few studies have examined whether the type of crimes committed in disadvantaged neighborhoods are different from those committed in less disadvantaged areas. By examining census data and crime data from Buffalo, New York I want to answer three questions: 1) Are the types of crime being committed in low-income census tracts different from those in higher income tracts? 2) Have census tracts witnessed an overall decrease in crime between 2010 and 2017? 3) If so, does the decrease differ by crime type? To answer my questions, I will compare crime rates by type of crime incident between 2006-2010 to crime rates in 2013-2017. I measure neighborhood disadvantage using census tract data in Buffalo, New York on median income from the 2010 and 2017 ACS. Crime data comes from the public PenData Buffalo and can be broken into six categories: assault, breaking and entering, homicide, sexual offenses, robbery, and theft. I predict that, although crime rates for all types are likely higher in lower income neighborhoods, violent crimes will be more common, while theft and other offenses are more likely to occur than violent crimes in higher income neighborhoods and that crimes rates have likely decreased in all tracts, but more so for violent crimes, as opposed to property crimes.
+Crime rates have decreased for all types of crime since the 1990s, although most considerably for violent crimes (Papachristos 2013). However, crime rates vary depending on the social composition of a neighborhood. Disadvantaged neighborhoods are disproportionately low-income with weak social ties and high residential instability (Zuberi 2012). The concentration of poverty, violence, and high policing in disadvantaged neighborhoods hinder residents’ ability to form social cohesion and community organization, increasing residents’ risk of victimization and limiting social control (Van Wilsem, Wittebrood, De Graaf 2006). Disadvantaged neighborhoods are also often policed at higher rates than their counterparts. The high poverty and policing combined with lack of social control and low social cohesion in disadvantaged neighborhoods leads to increased crime rates in these areas (Van Wilsem et al. 2006). Violent crime, in particular, is more prevalent in urban, disadvantaged neighborhoods (Friedson and Sharkey 2015). However, few studies have examined whether the type of crimes committed in disadvantaged neighborhoods are different from those committed in less disadvantaged areas. By examining census data and crime data from Buffalo, New York I want to answer three questions: 1) Are the types of crime being committed in low-income census tracts different from those in higher income tracts? 2) Have census tracts witnessed an overall decrease in crime between 2010 and 2017? 3) If so, does the decrease differ by crime type? To answer my questions, I will compare crime rates by type of crime incident between 2010 to crime rates in 2017. I measure neighborhood disadvantage using census tract data in Buffalo, New York on median income from the 2010 and 2017 ACS. Crime data comes from the public PenData Buffalo and can be broken into five categories: assault, breaking and entering, homicide, sexual offenses, and theft. I predict that, although crime rates for all types are likely higher in lower income neighborhoods, the difference is likely greater for violent crimes. I also hypothesize that there will be a decrease in crimes rates between 2010 and 2017 for all tracts, but more noticeably for violent crimes, as opposed to property crimes.
 
 
 # Materials and methods
@@ -29,6 +29,7 @@ library(sf)
 library(tigris)
 library(plotly)
 library(gridExtra)
+library(spgwr)
 ```
 
 ## 2. Download the data
@@ -108,7 +109,7 @@ crime_year$parent_incident_type <- as.factor(crime_year$parent_incident_type) %>
 
 #clean/filter crime data, drop geometry
 crime2017 <- crime_year %>%
-     filter(crime_date >= 2013 & crime_date <= 2017) %>%
+     filter(crime_date == 2017) %>%
      group_by(NAME, parent_incident_type) %>%
     summarize(total = n()) %>%
     st_set_geometry(NULL)
@@ -120,7 +121,7 @@ c2017_spread[is.na(c2017_spread)] <- 0
 
 #Do the same for 2010
 crime2010 <- crime_year %>%
-     filter(crime_date >= 2006 & crime_date <= 2010) %>%
+     filter(crime_date == 2010) %>%
      group_by(NAME, parent_incident_type) %>%
     summarize(total = n()) %>%
     st_set_geometry(NULL)
@@ -131,6 +132,14 @@ c2010_spread[is.na(c2010_spread)] <- 0
 
 ```
 
+Clean crime data for time series analysis
+```{r}
+crimeALL <- crime_year %>%
+     filter(crime_date >= 2010 & crime_date <= 2017) %>%
+     group_by(parent_incident_type, crime_date) %>%
+    summarize(total = n()) %>%
+    st_set_geometry(NULL)
+```
 Clean income data and join datasets
 ```{r, cache = TRUE}
 #Remove and rename columns
@@ -199,24 +208,34 @@ crimetype_pop10 <- cbind(crime_income2010, pop2010_clean)
 avghom2010 <- crimetype_pop10 %>%
   mutate(AvgHom = (Homicide/Population))
 
+avgAss2010 <- crimetype_pop10 %>%
+  mutate(AvgAssault = (Assault/Population))
+
 #Join population and crime_spread 2017
 crimetype_pop17 <- cbind(crime_income2017, pop2017_clean)
 
 avghom2017 <- crimetype_pop17 %>%
   mutate(AvgHom = (Homicide/Population))
+
+avgAss2017 <- crimetype_pop10 %>%
+  mutate(AvgAssault = (Assault/Population))
 ```
 
-## 4. Run regression/Plot the relationship between crime and median income
+## 4. Run regression/plot the relationship between crime and median income
+Relationship between crime and income
 ```{r, results='asis', cache = TRUE, message=F, warning=F}
-#2010 regression
+#2010 plot
 ggplot(cpp2010) + geom_point(aes(x = MedianInc, y = AvgCPC)) +
-  labs(x = "Median Income 2010", y = "Crime Per Capita 2010", title = "Relationship between Median Income and Crime Per Capita in 2010")
+  labs(x = "Median Income 2010", y = "Average Crime Per Capita 2010", title = "Relationship between Median Income and Crime Per Capita in 2010")
+
+#2017 plot
+ggplot(cpp2017) + geom_point(aes(x = MedianInc, y = AvgCPC)) +
+  labs(x = "Median Income 2017", y = "Average Crime Per Capita 2017", title = "Relationship between Median Income and Crime Per Capita in 2017")
 
 ```
-```{r}
-ggplot(cpp2017) + geom_point(aes(x = MedianInc, y = AvgCPC)) +
-  labs(x = "Median Income 2017", y = "Crime Per Capita 2017", title = "Relationship between Median Income and Crime Per Capita in 2017")
 
+Relationship between crime and income 2017
+```{r}
 #2017 regression
 Assault2017_reg <- lm(Assault~MedianInc, data = crimetype_pop17)
 summary(Assault2017_reg)
@@ -236,17 +255,34 @@ Hom2017_reg <- lm(Homicide~MedianInc, data = crimetype_pop17)
 summary(Hom2017_reg)
 
 #Plot relationship between homicide and crime
-ggplot(avghom2017) + geom_point(aes(x = MedianInc, y = Homicide)) + labs(x = "Median Income 2017", y = "Crime Per Capita 2017", title = "Relationship between Median Income and Homicide Per Capita in 2017")
-```
+ggplot(avghom2017) + geom_point(aes(x = MedianInc, y = Homicide)) + labs(x = "Median Income 2017", y = "Homicide Per Capita 2017", title = "Relationship between Median Income and Homicide Per Capita in 2017")
 
-``` {r, results = 'asis', cache = TRUE}
+crimetype_pop17sp <- as(crimetype_pop17, "Spatial")
+bw <- ggwr.sel(Homicide~MedianInc, data = crimetype_pop17sp)
+
+#Calculate global weighted regression
+GWRhom2017 <- gwr(Homicide~MedianInc, data = crimetype_pop17sp, bandwidth = bw, hatmatrix = TRUE, longlat =TRUE)
+spplot(crimetype_pop17sp,"Homicide")
+
+GWRass2017 <- gwr(Assault~MedianInc, data = crimetype_pop17sp, bandwidth = bw, hatmatrix = TRUE, longlat =TRUE)
+spplot(crimetype_pop17sp,"Assault")
+
+str(GWRhom2017)
+GWRass2017
 ```
 
 # Results
 
 
 ### Plot median income and crime per capita for 2010 and 2017
-This figure is a map of median income and median crime for 2010 by census tract in Buffalo, NY
+
+This figure is a map of overall crime frequency over time by type
+```{r, fig.width=10, fig.height=5, fig.cap="Crime Over Time"}
+ggplot(crimeALL) + geom_line(aes(x = crime_date, y = total, color = parent_incident_type)) + 
+  labs(x = "Year", y = "Total crime", color = "Crime type")
+```
+
+This figure is a map of median income and average crime per capita for 2010 by census tract in Buffalo, NY
 ```{r, fig.width=10, fig.height=5, fig.cap="2010 Income and Crime"}
 
 mapinc10 <- ggplot(cpp2010) + geom_sf(aes(fill = MedianInc)) +
@@ -261,7 +297,7 @@ grid.arrange(mapinc10, mapcrime10, nrow = 1)
 
 ```
 
-This figure is a map of median income and median crime for 2017 by census tract in Buffalo, NY
+This figure is a map of median income and average crime per capita for 2017 by census tract in Buffalo, NY
 ```{r, fig.width=10, fig.height=5, fig.cap="2017 Income and Crime"}
 mapinc17 <- ggplot(cpp2017) + geom_sf(aes(fill = MedianInc)) +
   scale_fill_viridis_c() + labs(fill = "Median Income") + 
@@ -272,8 +308,6 @@ mapcrime17 <- ggplot(cpp2017) + geom_sf(aes(fill = AvgCPC)) +
   theme(panel.background = element_blank())
 
 grid.arrange(mapinc17, mapcrime17, nrow = 1)
-
-
 ```
 
 ## Plot crime by type
@@ -285,7 +319,7 @@ hom2010map <- ggplot(avghom2010) + geom_sf(aes(fill = AvgHom)) + scale_fill_viri
   theme(panel.background = element_blank()) +
   labs(fill = "Avg Homicide PC")
 
-grid.arrange(mapinc17, hom2010map, nrow = 1)
+grid.arrange(mapinc10, hom2010map, nrow = 1)
 ```
 
 Homicide 2017
@@ -298,10 +332,29 @@ hom2017map <- ggplot(avghom2017) + geom_sf(aes(fill = AvgHom)) + scale_fill_viri
 grid.arrange(mapinc17, hom2017map, nrow = 1)
 ```
 
+Assault2010
+```{r,fig.width=10, fig.height=5}
+assault2010map <- ggplot(avgAss2010) + geom_sf(aes(fill = AvgAssault)) + scale_fill_viridis_c() + 
+  theme(panel.background = element_blank()) +
+  labs(fill = "Avg Assault PC")
+
+grid.arrange(mapinc10, assault2010map, nrow = 1)
+
+```
+Assault2017
+```{r,fig.width=10, fig.height=5}
+assault2017map <- ggplot(avgAss2017) + geom_sf(aes(fill = AvgAssault)) + scale_fill_viridis_c() +
+  theme(panel.background = element_blank()) +
+  labs(fill = "Avg Assault PC")
+
+grid.arrange(mapinc17, assault2017map, nrow = 1)
+```
 # Conclusions
 Overall, it does not seem like median income alone has a large impact on crime. However, the relationship between crime and median income is higher when examining violent crimes, particularly in 2017. Median income was statistically correlated with homicide, assault, and breaking & entering, but not theft or sexual offenses for 2017.
 
 # References
+
+https://data.buffalony.gov/Public-Safety/Crime-Incidents/d6g9-xbgu
 
 Friedson, Michael and Patrick Sharkey. 2015. "Violence and Neighborhood Disadvantage after the Crime Decline." *The American Academy of Political & Social Science* 660. 
 

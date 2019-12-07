@@ -378,7 +378,7 @@ div.tocify {
 
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
-<p>Crime rates have decreased for all types of crime since the 1990s, although most considerably for violent crimes (Papachristos 2013). However, crime rates vary depending on the social composition of a neighborhood. Disadvantaged neighborhoods are disproportionately low-income with weak social ties and high residential instability (Zuberi 2012). The concentration of poverty, violence, and high policing in disadvantaged neighborhoods hinder residents’ ability to form social cohesion and community organization, increasing residents’ risk of victimization and limiting social control (Van Wilsem, Wittebrood, De Graaf 2006). Disadvantaged neighborhoods are also often policed at higher rates than their counterparts. The high poverty and policing combined with lack of social control and low social cohesion in disadvantaged neighborhoods leads to increased crime rates in these areas (Van Wilsem et al. 2006). Violent crime, in particular, is more prevalent in urban, disadvantaged neighborhoods (Friedson and Sharkey 2015). However, few studies have examined whether the type of crimes committed in disadvantaged neighborhoods are different from those committed in less disadvantaged areas. By examining census data and crime data from Buffalo, New York I want to answer three questions: 1) Are the types of crime being committed in low-income census tracts different from those in higher income tracts? 2) Have census tracts witnessed an overall decrease in crime between 2010 and 2017? 3) If so, does the decrease differ by crime type? To answer my questions, I will compare crime rates by type of crime incident between 2006-2010 to crime rates in 2013-2017. I measure neighborhood disadvantage using census tract data in Buffalo, New York on median income from the 2010 and 2017 ACS. Crime data comes from the public PenData Buffalo and can be broken into six categories: assault, breaking and entering, homicide, sexual offenses, robbery, and theft. I predict that, although crime rates for all types are likely higher in lower income neighborhoods, violent crimes will be more common, while theft and other offenses are more likely to occur than violent crimes in higher income neighborhoods and that crimes rates have likely decreased in all tracts, but more so for violent crimes, as opposed to property crimes.</p>
+<p>Crime rates have decreased for all types of crime since the 1990s, although most considerably for violent crimes (Papachristos 2013). However, crime rates vary depending on the social composition of a neighborhood. Disadvantaged neighborhoods are disproportionately low-income with weak social ties and high residential instability (Zuberi 2012). The concentration of poverty, violence, and high policing in disadvantaged neighborhoods hinder residents’ ability to form social cohesion and community organization, increasing residents’ risk of victimization and limiting social control (Van Wilsem, Wittebrood, De Graaf 2006). Disadvantaged neighborhoods are also often policed at higher rates than their counterparts. The high poverty and policing combined with lack of social control and low social cohesion in disadvantaged neighborhoods leads to increased crime rates in these areas (Van Wilsem et al. 2006). Violent crime, in particular, is more prevalent in urban, disadvantaged neighborhoods (Friedson and Sharkey 2015). However, few studies have examined whether the type of crimes committed in disadvantaged neighborhoods are different from those committed in less disadvantaged areas. By examining census data and crime data from Buffalo, New York I want to answer three questions: 1) Are the types of crime being committed in low-income census tracts different from those in higher income tracts? 2) Have census tracts witnessed an overall decrease in crime between 2010 and 2017? 3) If so, does the decrease differ by crime type? To answer my questions, I will compare crime rates by type of crime incident between 2010 to crime rates in 2017. I measure neighborhood disadvantage using census tract data in Buffalo, New York on median income from the 2010 and 2017 ACS. Crime data comes from the public PenData Buffalo and can be broken into five categories: assault, breaking and entering, homicide, sexual offenses, and theft. I predict that, although crime rates for all types are likely higher in lower income neighborhoods, the difference is likely greater for violent crimes. I also hypothesize that there will be a decrease in crimes rates between 2010 and 2017 for all tracts, but more noticeably for violent crimes, as opposed to property crimes.</p>
 </div>
 <div id="materials-and-methods" class="section level1">
 <h1>Materials and methods</h1>
@@ -401,7 +401,8 @@ library(seg)
 library(sf)
 library(tigris)
 library(plotly)
-library(gridExtra)</code></pre>
+library(gridExtra)
+library(spgwr)</code></pre>
 </div>
 <div id="download-the-data" class="section level2">
 <h2>2. Download the data</h2>
@@ -472,7 +473,7 @@ crime_year$parent_incident_type &lt;- as.factor(crime_year$parent_incident_type)
 
 #clean/filter crime data, drop geometry
 crime2017 &lt;- crime_year %&gt;%
-     filter(crime_date &gt;= 2013 &amp; crime_date &lt;= 2017) %&gt;%
+     filter(crime_date == 2017) %&gt;%
      group_by(NAME, parent_incident_type) %&gt;%
     summarize(total = n()) %&gt;%
     st_set_geometry(NULL)
@@ -484,7 +485,7 @@ c2017_spread[is.na(c2017_spread)] &lt;- 0
 
 #Do the same for 2010
 crime2010 &lt;- crime_year %&gt;%
-     filter(crime_date &gt;= 2006 &amp; crime_date &lt;= 2010) %&gt;%
+     filter(crime_date == 2010) %&gt;%
      group_by(NAME, parent_incident_type) %&gt;%
     summarize(total = n()) %&gt;%
     st_set_geometry(NULL)
@@ -492,6 +493,12 @@ crime2010 &lt;- crime_year %&gt;%
 c2010_spread &lt;- spread(crime2010, parent_incident_type, total)
 
 c2010_spread[is.na(c2010_spread)] &lt;- 0</code></pre>
+<p>Clean crime data for time series analysis</p>
+<pre class="r"><code>crimeALL &lt;- crime_year %&gt;%
+     filter(crime_date &gt;= 2010 &amp; crime_date &lt;= 2017) %&gt;%
+     group_by(parent_incident_type, crime_date) %&gt;%
+    summarize(total = n()) %&gt;%
+    st_set_geometry(NULL)</code></pre>
 <p>Clean income data and join datasets</p>
 <pre class="r"><code>#Remove and rename columns
 income_clean17 &lt;- income_crop2017 %&gt;%
@@ -552,21 +559,30 @@ crimetype_pop10 &lt;- cbind(crime_income2010, pop2010_clean)
 avghom2010 &lt;- crimetype_pop10 %&gt;%
   mutate(AvgHom = (Homicide/Population))
 
+avgAss2010 &lt;- crimetype_pop10 %&gt;%
+  mutate(AvgAssault = (Assault/Population))
+
 #Join population and crime_spread 2017
 crimetype_pop17 &lt;- cbind(crime_income2017, pop2017_clean)
 
 avghom2017 &lt;- crimetype_pop17 %&gt;%
-  mutate(AvgHom = (Homicide/Population))</code></pre>
+  mutate(AvgHom = (Homicide/Population))
+
+avgAss2017 &lt;- crimetype_pop10 %&gt;%
+  mutate(AvgAssault = (Assault/Population))</code></pre>
 </div>
 <div id="run-regressionplot-the-relationship-between-crime-and-median-income" class="section level2">
-<h2>4. Run regression/Plot the relationship between crime and median income</h2>
-<pre class="r"><code>#2010 regression
+<h2>4. Run regression/plot the relationship between crime and median income</h2>
+<p>Relationship between crime and income</p>
+<pre class="r"><code>#2010 plot
 ggplot(cpp2010) + geom_point(aes(x = MedianInc, y = AvgCPC)) +
-  labs(x = &quot;Median Income 2010&quot;, y = &quot;Crime Per Capita 2010&quot;, title = &quot;Relationship between Median Income and Crime Per Capita in 2010&quot;)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
-<pre class="r"><code>ggplot(cpp2017) + geom_point(aes(x = MedianInc, y = AvgCPC)) +
-  labs(x = &quot;Median Income 2017&quot;, y = &quot;Crime Per Capita 2017&quot;, title = &quot;Relationship between Median Income and Crime Per Capita in 2017&quot;)</code></pre>
+  labs(x = &quot;Median Income 2010&quot;, y = &quot;Average Crime Per Capita 2010&quot;, title = &quot;Relationship between Median Income and Crime Per Capita in 2010&quot;)</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<pre class="r"><code>#2017 plot
+ggplot(cpp2017) + geom_point(aes(x = MedianInc, y = AvgCPC)) +
+  labs(x = &quot;Median Income 2017&quot;, y = &quot;Average Crime Per Capita 2017&quot;, title = &quot;Relationship between Median Income and Crime Per Capita in 2017&quot;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-9-2.png" width="672" /></p>
+<p>Relationship between crime and income 2017</p>
 <pre class="r"><code>#2017 regression
 Assault2017_reg &lt;- lm(Assault~MedianInc, data = crimetype_pop17)
 summary(Assault2017_reg)</code></pre>
@@ -576,18 +592,18 @@ summary(Assault2017_reg)</code></pre>
 ## 
 ## Residuals:
 ##     Min      1Q  Median      3Q     Max 
-## -320.18  -91.58  -39.52   77.83  630.35 
+## -62.121 -18.100  -5.335  15.398  87.993 
 ## 
 ## Coefficients:
 ##               Estimate Std. Error t value Pr(&gt;|t|)    
-## (Intercept) 340.070193  49.594980   6.857 1.55e-09 ***
-## MedianInc    -0.005114   0.002156  -2.373   0.0202 *  
+## (Intercept) 67.7712611  9.2764735   7.306 2.18e-10 ***
+## MedianInc   -0.0010421  0.0004032  -2.585   0.0116 *  
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 148.9 on 77 degrees of freedom
-## Multiple R-squared:  0.06812,    Adjusted R-squared:  0.05602 
-## F-statistic: 5.629 on 1 and 77 DF,  p-value: 0.02016</code></pre>
+## Residual standard error: 27.85 on 77 degrees of freedom
+## Multiple R-squared:  0.07984,    Adjusted R-squared:  0.06789 
+## F-statistic: 6.681 on 1 and 77 DF,  p-value: 0.01163</code></pre>
 <pre class="r"><code>Theft2017_reg &lt;- lm(Theft~MedianInc, data = crimetype_pop17)
 summary(Theft2017_reg)</code></pre>
 <pre><code>## 
@@ -595,19 +611,19 @@ summary(Theft2017_reg)</code></pre>
 ## lm(formula = Theft ~ MedianInc, data = crimetype_pop17)
 ## 
 ## Residuals:
-##     Min      1Q  Median      3Q     Max 
-## -544.48 -258.01  -60.03  164.36 1959.41 
+##    Min     1Q Median     3Q    Max 
+## -98.25 -47.57  -4.83  28.31 298.36 
 ## 
 ## Coefficients:
-##              Estimate Std. Error t value Pr(&gt;|t|)   
-## (Intercept) 4.511e+02  1.328e+02   3.398  0.00108 **
-## MedianInc   7.752e-03  5.771e-03   1.343  0.18314   
+##              Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) 81.827621  23.038194   3.552 0.000657 ***
+## MedianInc    0.001355   0.001001   1.353 0.179862    
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 398.6 on 77 degrees of freedom
-## Multiple R-squared:  0.0229, Adjusted R-squared:  0.01021 
-## F-statistic: 1.804 on 1 and 77 DF,  p-value: 0.1831</code></pre>
+## Residual standard error: 69.16 on 77 degrees of freedom
+## Multiple R-squared:  0.02324,    Adjusted R-squared:  0.01055 
+## F-statistic: 1.832 on 1 and 77 DF,  p-value: 0.1799</code></pre>
 <pre class="r"><code>BE2017_reg &lt;- lm(Breaking_entering~MedianInc, data = crimetype_pop17)
 summary(BE2017_reg)</code></pre>
 <pre><code>## 
@@ -616,18 +632,18 @@ summary(BE2017_reg)</code></pre>
 ## 
 ## Residuals:
 ##     Min      1Q  Median      3Q     Max 
-## -280.14  -63.85  -21.76   55.94  415.50 
+## -47.577 -10.242  -1.228  10.201  66.030 
 ## 
 ## Coefficients:
 ##               Estimate Std. Error t value Pr(&gt;|t|)    
-## (Intercept) 294.663328  37.309057   7.898  1.6e-11 ***
-## MedianInc    -0.004244   0.001622  -2.617   0.0107 *  
+## (Intercept) 49.6037771  6.2411690   7.948 1.28e-11 ***
+## MedianInc   -0.0007462  0.0002713  -2.751   0.0074 ** 
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 112 on 77 degrees of freedom
-## Multiple R-squared:  0.08168,    Adjusted R-squared:  0.06976 
-## F-statistic: 6.849 on 1 and 77 DF,  p-value: 0.01067</code></pre>
+## Residual standard error: 18.74 on 77 degrees of freedom
+## Multiple R-squared:  0.08949,    Adjusted R-squared:  0.07767 
+## F-statistic: 7.568 on 1 and 77 DF,  p-value: 0.007403</code></pre>
 <pre class="r"><code>#No correlation
 SO2017_reg &lt;- lm(Sexual_Offenses~MedianInc, data = crimetype_pop17)
 summary(SO2017_reg)</code></pre>
@@ -637,18 +653,18 @@ summary(SO2017_reg)</code></pre>
 ## 
 ## Residuals:
 ##     Min      1Q  Median      3Q     Max 
-## -23.694  -9.379  -3.715   7.705  76.810 
+## -5.2161 -2.1621 -0.2601  0.8989 12.7884 
 ## 
 ## Coefficients:
 ##               Estimate Std. Error t value Pr(&gt;|t|)    
-## (Intercept) 25.9257386  4.8525795   5.343 9.02e-07 ***
-## MedianInc   -0.0002760  0.0002109  -1.308    0.195    
+## (Intercept)  5.409e+00  1.069e+00   5.060 2.78e-06 ***
+## MedianInc   -7.089e-05  4.646e-05  -1.526    0.131    
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 14.57 on 77 degrees of freedom
-## Multiple R-squared:  0.02175,    Adjusted R-squared:  0.009047 
-## F-statistic: 1.712 on 1 and 77 DF,  p-value: 0.1946</code></pre>
+## Residual standard error: 3.209 on 77 degrees of freedom
+## Multiple R-squared:  0.02935,    Adjusted R-squared:  0.01675 
+## F-statistic: 2.328 on 1 and 77 DF,  p-value: 0.1311</code></pre>
 <pre class="r"><code>#Highest correlation
 Hom2017_reg &lt;- lm(Homicide~MedianInc, data = crimetype_pop17)
 summary(Hom2017_reg)</code></pre>
@@ -658,28 +674,1118 @@ summary(Hom2017_reg)</code></pre>
 ## 
 ## Residuals:
 ##     Min      1Q  Median      3Q     Max 
-## -6.7832 -2.4382 -0.6611  1.5548  8.3505 
+## -1.0987 -0.6351 -0.2845  0.3921  4.3353 
 ## 
 ## Coefficients:
 ##               Estimate Std. Error t value Pr(&gt;|t|)    
-## (Intercept)  7.246e+00  1.129e+00   6.415 1.04e-08 ***
-## MedianInc   -1.703e-04  4.909e-05  -3.470 0.000856 ***
+## (Intercept)  1.176e+00  3.075e-01   3.826 0.000263 ***
+## MedianInc   -2.860e-05  1.336e-05  -2.140 0.035489 *  
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 3.39 on 77 degrees of freedom
-## Multiple R-squared:  0.1352, Adjusted R-squared:  0.124 
-## F-statistic: 12.04 on 1 and 77 DF,  p-value: 0.0008559</code></pre>
+## Residual standard error: 0.9229 on 77 degrees of freedom
+## Multiple R-squared:  0.05616,    Adjusted R-squared:  0.0439 
+## F-statistic: 4.581 on 1 and 77 DF,  p-value: 0.03549</code></pre>
 <pre class="r"><code>#Plot relationship between homicide and crime
-ggplot(avghom2017) + geom_point(aes(x = MedianInc, y = Homicide)) + labs(x = &quot;Median Income 2017&quot;, y = &quot;Crime Per Capita 2017&quot;, title = &quot;Relationship between Median Income and Homicide Per Capita in 2017&quot;)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-9-2.png" width="672" /></p>
+ggplot(avghom2017) + geom_point(aes(x = MedianInc, y = Homicide)) + labs(x = &quot;Median Income 2017&quot;, y = &quot;Homicide Per Capita 2017&quot;, title = &quot;Relationship between Median Income and Homicide Per Capita in 2017&quot;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+<pre class="r"><code>crimetype_pop17sp &lt;- as(crimetype_pop17, &quot;Spatial&quot;)
+bw &lt;- ggwr.sel(Homicide~MedianInc, data = crimetype_pop17sp)</code></pre>
+<pre><code>## Bandwidth: 6.204775 CV score: 67.72066 
+## Bandwidth: 10.02951 CV score: 68.1456 
+## Bandwidth: 3.840956 CV score: 66.79851 
+## Bandwidth: 2.380036 CV score: 66.29676 
+## Bandwidth: 1.477138 CV score: 71.12198 
+## Bandwidth: 2.938058 CV score: 66.2901 
+## Bandwidth: 2.674218 CV score: 66.21829 
+## Bandwidth: 2.665231 CV score: 66.2176 
+## Bandwidth: 2.615683 CV score: 66.21655 
+## Bandwidth: 2.525674 CV score: 66.22845 
+## Bandwidth: 2.629376 CV score: 66.21635 
+## Bandwidth: 2.629824 CV score: 66.21635 
+## Bandwidth: 2.629593 CV score: 66.21635 
+## Bandwidth: 2.629552 CV score: 66.21635 
+## Bandwidth: 2.629633 CV score: 66.21635 
+## Bandwidth: 2.629593 CV score: 66.21635</code></pre>
+<pre class="r"><code>#Calculate global weighted regression
+GWRhom2017 &lt;- gwr(Homicide~MedianInc, data = crimetype_pop17sp, bandwidth = bw, hatmatrix = TRUE, longlat =TRUE)
+spplot(crimetype_pop17sp,&quot;Homicide&quot;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-10-2.png" width="672" /></p>
+<pre class="r"><code>GWRass2017 &lt;- gwr(Assault~MedianInc, data = crimetype_pop17sp, bandwidth = bw, hatmatrix = TRUE, longlat =TRUE)
+spplot(crimetype_pop17sp,&quot;Assault&quot;)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-10-3.png" width="672" /></p>
+<pre class="r"><code>str(GWRhom2017)</code></pre>
+<pre><code>## List of 12
+##  $ SDF      :Formal class &#39;SpatialPolygonsDataFrame&#39; [package &quot;sp&quot;] with 5 slots
+##   .. ..@ data       :&#39;data.frame&#39;:   79 obs. of  12 variables:
+##   .. .. ..$ sum.w              : num [1:79] 9.33 12.93 13.1 8.6 7.8 ...
+##   .. .. ..$ X.Intercept.       : num [1:79] 1.28 1.51 1.35 1.42 1.48 ...
+##   .. .. ..$ MedianInc          : num [1:79] -3.84e-05 -4.57e-05 -3.84e-05 -4.37e-05 -4.59e-05 ...
+##   .. .. ..$ X.Intercept._se    : num [1:79] 0.766 0.68 0.536 0.973 1.038 ...
+##   .. .. ..$ MedianInc_se       : num [1:79] 3.20e-05 2.97e-05 2.28e-05 4.00e-05 4.21e-05 ...
+##   .. .. ..$ gwr.e              : num [1:79] -0.53314 1.47862 -0.57064 -0.10085 -0.00087 ...
+##   .. .. ..$ pred               : num [1:79] 0.53314 0.52138 0.57064 0.10085 0.00087 ...
+##   .. .. ..$ pred.se            : num [1:79] 0.241 0.192 0.173 0.352 0.423 ...
+##   .. .. ..$ localR2            : num [1:79] 0.0854 0.1224 0.117 0.117 0.1277 ...
+##   .. .. ..$ X.Intercept._se_EDF: num [1:79] 0.78 0.692 0.546 0.991 1.056 ...
+##   .. .. ..$ MedianInc_se_EDF   : num [1:79] 3.26e-05 3.02e-05 2.32e-05 4.07e-05 4.29e-05 ...
+##   .. .. ..$ pred.se.1          : num [1:79] 0.245 0.196 0.176 0.358 0.431 ...
+##   .. ..@ polygons   :List of 79
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.8
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000972
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:50, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.8
+##   .. .. .. .. ..@ ID       : chr &quot;1&quot;
+##   .. .. .. .. ..@ area     : num 0.000972
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000137
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:18, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;2&quot;
+##   .. .. .. .. ..@ area     : num 0.000137
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000568
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:35, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;3&quot;
+##   .. .. .. .. ..@ area     : num 0.000568
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.8
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000127
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:16, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.8
+##   .. .. .. .. ..@ ID       : chr &quot;4&quot;
+##   .. .. .. .. ..@ area     : num 0.000127
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.8
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000118
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:21, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.8
+##   .. .. .. .. ..@ ID       : chr &quot;5&quot;
+##   .. .. .. .. ..@ area     : num 0.000118
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.8
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000121
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:20, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.8
+##   .. .. .. .. ..@ ID       : chr &quot;6&quot;
+##   .. .. .. .. ..@ area     : num 0.000121
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 6e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:13, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;7&quot;
+##   .. .. .. .. ..@ area     : num 6e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000231
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:22, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;8&quot;
+##   .. .. .. .. ..@ area     : num 0.000231
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000169
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:18, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;9&quot;
+##   .. .. .. .. ..@ area     : num 0.000169
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.00012
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:13, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;10&quot;
+##   .. .. .. .. ..@ area     : num 0.00012
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000105
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:12, 1:2] -78.9 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;11&quot;
+##   .. .. .. .. ..@ area     : num 0.000105
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000217
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:21, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;12&quot;
+##   .. .. .. .. ..@ area     : num 0.000217
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000127
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:12, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;13&quot;
+##   .. .. .. .. ..@ area     : num 0.000127
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000135
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:14, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;14&quot;
+##   .. .. .. .. ..@ area     : num 0.000135
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 8.48e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:16, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;15&quot;
+##   .. .. .. .. ..@ area     : num 8.48e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000183
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:22, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;16&quot;
+##   .. .. .. .. ..@ area     : num 0.000183
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000119
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:13, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;17&quot;
+##   .. .. .. .. ..@ area     : num 0.000119
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 9.98e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:13, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;18&quot;
+##   .. .. .. .. ..@ area     : num 9.98e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000128
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:19, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;19&quot;
+##   .. .. .. .. ..@ area     : num 0.000128
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 8.58e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:16, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;20&quot;
+##   .. .. .. .. ..@ area     : num 8.58e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000157
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:19, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;21&quot;
+##   .. .. .. .. ..@ area     : num 0.000157
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000166
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:19, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;22&quot;
+##   .. .. .. .. ..@ area     : num 0.000166
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 7.68e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:11, 1:2] -78.9 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;23&quot;
+##   .. .. .. .. ..@ area     : num 7.68e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000109
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:13, 1:2] -78.9 -78.9 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;24&quot;
+##   .. .. .. .. ..@ area     : num 0.000109
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000165
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:19, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;25&quot;
+##   .. .. .. .. ..@ area     : num 0.000165
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000175
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:25, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;26&quot;
+##   .. .. .. .. ..@ area     : num 0.000175
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.00014
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:23, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;27&quot;
+##   .. .. .. .. ..@ area     : num 0.00014
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000119
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:19, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;28&quot;
+##   .. .. .. .. ..@ area     : num 0.000119
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 6.92e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:14, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;29&quot;
+##   .. .. .. .. ..@ area     : num 6.92e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 5.79e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:13, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;30&quot;
+##   .. .. .. .. ..@ area     : num 5.79e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.00017
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:20, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;31&quot;
+##   .. .. .. .. ..@ area     : num 0.00017
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.00012
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:20, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;32&quot;
+##   .. .. .. .. ..@ area     : num 0.00012
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000106
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:15, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;33&quot;
+##   .. .. .. .. ..@ area     : num 0.000106
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000132
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:21, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;34&quot;
+##   .. .. .. .. ..@ area     : num 0.000132
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000109
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:18, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;35&quot;
+##   .. .. .. .. ..@ area     : num 0.000109
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 6.6e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:13, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;36&quot;
+##   .. .. .. .. ..@ area     : num 6.6e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000224
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:23, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;37&quot;
+##   .. .. .. .. ..@ area     : num 0.000224
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 43
+##   .. .. .. .. .. .. .. ..@ area   : num 9.03e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:18, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 43
+##   .. .. .. .. ..@ ID       : chr &quot;38&quot;
+##   .. .. .. .. ..@ area     : num 9.03e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 43
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000135
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:17, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 43
+##   .. .. .. .. ..@ ID       : chr &quot;39&quot;
+##   .. .. .. .. ..@ area     : num 0.000135
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000161
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:20, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;40&quot;
+##   .. .. .. .. ..@ area     : num 0.000161
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000109
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:17, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;41&quot;
+##   .. .. .. .. ..@ area     : num 0.000109
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000124
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:18, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;42&quot;
+##   .. .. .. .. ..@ area     : num 0.000124
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 43
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000143
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:17, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 43
+##   .. .. .. .. ..@ ID       : chr &quot;43&quot;
+##   .. .. .. .. ..@ area     : num 0.000143
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 43
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000129
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:22, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 43
+##   .. .. .. .. ..@ ID       : chr &quot;44&quot;
+##   .. .. .. .. ..@ area     : num 0.000129
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000115
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:20, 1:2] -78.9 -78.9 -78.9 -78.9 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;45&quot;
+##   .. .. .. .. ..@ area     : num 0.000115
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 6.45e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:12, 1:2] -78.9 -78.9 -78.9 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;46&quot;
+##   .. .. .. .. ..@ area     : num 6.45e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000258
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:22, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;47&quot;
+##   .. .. .. .. ..@ area     : num 0.000258
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000211
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:27, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;48&quot;
+##   .. .. .. .. ..@ area     : num 0.000211
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000172
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:27, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;49&quot;
+##   .. .. .. .. ..@ area     : num 0.000172
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 43
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000243
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:18, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 43
+##   .. .. .. .. ..@ ID       : chr &quot;50&quot;
+##   .. .. .. .. ..@ area     : num 0.000243
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000106
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:16, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;51&quot;
+##   .. .. .. .. ..@ area     : num 0.000106
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 43
+##   .. .. .. .. .. .. .. ..@ area   : num 7.63e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:12, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 43
+##   .. .. .. .. ..@ ID       : chr &quot;52&quot;
+##   .. .. .. .. ..@ area     : num 7.63e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 43
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000161
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:21, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 43
+##   .. .. .. .. ..@ ID       : chr &quot;53&quot;
+##   .. .. .. .. ..@ area     : num 0.000161
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000167
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:30, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;54&quot;
+##   .. .. .. .. ..@ area     : num 0.000167
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000146
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:22, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;55&quot;
+##   .. .. .. .. ..@ area     : num 0.000146
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 4.96e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:11, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;56&quot;
+##   .. .. .. .. ..@ area     : num 4.96e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 7.96e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:19, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;57&quot;
+##   .. .. .. .. ..@ area     : num 7.96e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000116
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:23, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;58&quot;
+##   .. .. .. .. ..@ area     : num 0.000116
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 5.27e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:19, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;59&quot;
+##   .. .. .. .. ..@ area     : num 5.27e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 4.35e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:15, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;60&quot;
+##   .. .. .. .. ..@ area     : num 4.35e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 4.92e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:12, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;61&quot;
+##   .. .. .. .. ..@ area     : num 4.92e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 6.07e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:12, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;62&quot;
+##   .. .. .. .. ..@ area     : num 6.07e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 8.72e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:13, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;63&quot;
+##   .. .. .. .. ..@ area     : num 8.72e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 9.44e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:20, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;64&quot;
+##   .. .. .. .. ..@ area     : num 9.44e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 6.61e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:18, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;65&quot;
+##   .. .. .. .. ..@ area     : num 6.61e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 7.11e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:18, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;66&quot;
+##   .. .. .. .. ..@ area     : num 7.11e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000196
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:21, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;67&quot;
+##   .. .. .. .. ..@ area     : num 0.000196
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 7.56e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:15, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;68&quot;
+##   .. .. .. .. ..@ area     : num 7.56e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 9.47e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:16, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;69&quot;
+##   .. .. .. .. ..@ area     : num 9.47e-05
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.00016
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:18, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;70&quot;
+##   .. .. .. .. ..@ area     : num 0.00016
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000155
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:18, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;228&quot;
+##   .. .. .. .. ..@ area     : num 0.000155
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000266
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:35, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;229&quot;
+##   .. .. .. .. ..@ area     : num 0.000266
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000467
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:32, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;221&quot;
+##   .. .. .. .. ..@ area     : num 0.000467
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000283
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:27, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;222&quot;
+##   .. .. .. .. ..@ area     : num 0.000283
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000212
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:21, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;223&quot;
+##   .. .. .. .. ..@ area     : num 0.000212
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.000128
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:12, 1:2] -78.9 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;224&quot;
+##   .. .. .. .. ..@ area     : num 0.000128
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.8 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.00021
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:16, 1:2] -78.8 -78.8 -78.8 -78.8 -78.8 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.8 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;225&quot;
+##   .. .. .. .. ..@ area     : num 0.00021
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 0.00019
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:20, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;226&quot;
+##   .. .. .. .. ..@ area     : num 0.00019
+##   .. .. ..$ :Formal class &#39;Polygons&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. ..@ Polygons :List of 1
+##   .. .. .. .. .. ..$ :Formal class &#39;Polygon&#39; [package &quot;sp&quot;] with 5 slots
+##   .. .. .. .. .. .. .. ..@ labpt  : num [1:2] -78.9 42.9
+##   .. .. .. .. .. .. .. ..@ area   : num 9.82e-05
+##   .. .. .. .. .. .. .. ..@ hole   : logi FALSE
+##   .. .. .. .. .. .. .. ..@ ringDir: int 1
+##   .. .. .. .. .. .. .. ..@ coords : num [1:17, 1:2] -78.9 -78.9 -78.9 -78.9 -78.9 ...
+##   .. .. .. .. ..@ plotOrder: int 1
+##   .. .. .. .. ..@ labpt    : num [1:2] -78.9 42.9
+##   .. .. .. .. ..@ ID       : chr &quot;227&quot;
+##   .. .. .. .. ..@ area     : num 9.82e-05
+##   .. ..@ plotOrder  : int [1:79] 1 3 73 74 72 47 50 8 37 12 ...
+##   .. ..@ bbox       : num [1:2, 1:2] -78.9 42.8 -78.8 43
+##   .. .. ..- attr(*, &quot;dimnames&quot;)=List of 2
+##   .. .. .. ..$ : chr [1:2] &quot;x&quot; &quot;y&quot;
+##   .. .. .. ..$ : chr [1:2] &quot;min&quot; &quot;max&quot;
+##   .. ..@ proj4string:Formal class &#39;CRS&#39; [package &quot;sp&quot;] with 1 slot
+##   .. .. .. ..@ projargs: chr &quot;+proj=longlat +datum=NAD83 +no_defs +ellps=GRS80 +towgs84=0,0,0&quot;
+##  $ lhat     : num [1:79, 1:79] 0.1591 0.0759 0.0448 0.0136 -0.0189 ...
+##  $ lm       :List of 11
+##   ..$ coefficients : Named num [1:2] 1.18 -2.86e-05
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:2] &quot;(Intercept)&quot; &quot;MedianInc&quot;
+##   ..$ residuals    : Named num [1:79] -0.62 1.445 -0.598 -0.315 -0.258 ...
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:79] &quot;1&quot; &quot;2&quot; &quot;3&quot; &quot;4&quot; ...
+##   ..$ fitted.values: Named num [1:79] 0.62 0.555 0.598 0.315 0.258 ...
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:79] &quot;1&quot; &quot;2&quot; &quot;3&quot; &quot;4&quot; ...
+##   ..$ effects      : Named num [1:79] -4.95 1.975 -0.509 -0.441 -0.427 ...
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:79] &quot;(Intercept)&quot; &quot;MedianInc&quot; &quot;&quot; &quot;&quot; ...
+##   ..$ weights      : num [1:79] 1 1 1 1 1 1 1 1 1 1 ...
+##   ..$ rank         : int 2
+##   ..$ assign       : int [1:2] 0 1
+##   ..$ qr           :List of 5
+##   .. ..$ qr   : num [1:79, 1:2] -8.888 0.113 0.113 0.113 0.113 ...
+##   .. .. ..- attr(*, &quot;assign&quot;)= int [1:2] 0 1
+##   .. .. ..- attr(*, &quot;dimnames&quot;)=List of 2
+##   .. .. .. ..$ : chr [1:79] &quot;1&quot; &quot;2&quot; &quot;3&quot; &quot;4&quot; ...
+##   .. .. .. ..$ : chr [1:2] &quot;(Intercept)&quot; &quot;MedianInc&quot;
+##   .. ..$ qraux: num [1:2] 1.11 1
+##   .. ..$ pivot: int [1:2] 1 2
+##   .. ..$ tol  : num 1e-07
+##   .. ..$ rank : int 2
+##   .. ..- attr(*, &quot;class&quot;)= chr &quot;qr&quot;
+##   ..$ df.residual  : int 77
+##   ..$ x            : num [1:79, 1:2] 1 1 1 1 1 1 1 1 1 1 ...
+##   .. ..- attr(*, &quot;dimnames&quot;)=List of 2
+##   .. .. ..$ : chr [1:79] &quot;1&quot; &quot;2&quot; &quot;3&quot; &quot;4&quot; ...
+##   .. .. ..$ : chr [1:2] &quot;(Intercept)&quot; &quot;MedianInc&quot;
+##   .. ..- attr(*, &quot;assign&quot;)= int [1:2] 0 1
+##   ..$ y            : Named num [1:79] 0 2 0 0 0 0 0 0 0 2 ...
+##   .. ..- attr(*, &quot;names&quot;)= chr [1:79] &quot;1&quot; &quot;2&quot; &quot;3&quot; &quot;4&quot; ...
+##  $ results  :List of 14
+##   ..$ v1      : num 7.12
+##   ..$ v2      : num 4.59
+##   ..$ delta1  : num 69.3
+##   ..$ delta2  : num 66.2
+##   ..$ sigma2  : num 0.83
+##   ..$ sigma2.b: num 0.728
+##   ..$ AICb    : num 218
+##   ..$ AICh    : num 206
+##   ..$ AICc    : num 218
+##   ..$ edf     : num 69.3
+##   ..$ rss     : num 57.5
+##   ..$ nu1     : num 4.59
+##   ..$ odelta2 : num 61.4
+##   ..$ n       : int 79
+##  $ bandwidth: num 2.63
+##  $ adapt    : NULL
+##  $ hatmatrix: logi TRUE
+##  $ gweight  : chr &quot;gwr.Gauss&quot;
+##  $ gTSS     : num 69.5
+##  $ this.call: language gwr(formula = Homicide ~ MedianInc, data = crimetype_pop17sp, bandwidth = bw,      hatmatrix = TRUE, longlat = TRUE)
+##  $ fp.given : logi FALSE
+##  $ timings  : num [1:6, 1:2] 0.01 0.02 0 0 0 ...
+##   ..- attr(*, &quot;dimnames&quot;)=List of 2
+##   .. ..$ : chr [1:6] &quot;set_up&quot; &quot;run_gwr&quot; &quot;postprocess_hatmatrix&quot; &quot;postprocess_localR2&quot; ...
+##   .. ..$ : chr [1:2] &quot;user.self&quot; &quot;elapsed&quot;
+##  - attr(*, &quot;class&quot;)= chr &quot;gwr&quot;</code></pre>
+<pre class="r"><code>GWRass2017</code></pre>
+<pre><code>## Call:
+## gwr(formula = Assault ~ MedianInc, data = crimetype_pop17sp, 
+##     bandwidth = bw, hatmatrix = TRUE, longlat = TRUE)
+## Kernel function: gwr.Gauss 
+## Fixed bandwidth: 2.629593 
+## Summary of GWR coefficient estimates at data points:
+##                     Min.     1st Qu.      Median     3rd Qu.        Max.
+## X.Intercept.  4.2347e+01  5.8634e+01  6.6761e+01  7.7911e+01  1.0504e+02
+## MedianInc    -2.6518e-03 -1.2374e-03 -9.9553e-04 -8.6628e-04  6.8842e-05
+##              Global
+## X.Intercept. 67.771
+## MedianInc    -0.001
+## Number of data points: 79 
+## Effective number of parameters (residual: 2traceS - traceS&#39;S): 9.658352 
+## Effective degrees of freedom (residual: 2traceS - traceS&#39;S): 69.34165 
+## Sigma (residual: 2traceS - traceS&#39;S): 26.33506 
+## Effective number of parameters (model: traceS): 7.124441 
+## Effective degrees of freedom (model: traceS): 71.87556 
+## Sigma (model: traceS): 25.86669 
+## Sigma (ML): 24.67277 
+## AICc (GWR p. 61, eq 2.33; p. 96, eq. 4.21): 749.0636 
+## AIC (GWR p. 96, eq. 4.22): 737.8173 
+## Residual sum of squares: 48090.89 
+## Quasi-global R2: 0.2588718</code></pre>
 </div>
 </div>
 <div id="results" class="section level1">
 <h1>Results</h1>
 <div id="plot-median-income-and-crime-per-capita-for-2010-and-2017" class="section level3">
 <h3>Plot median income and crime per capita for 2010 and 2017</h3>
-<p>This figure is a map of median income and median crime for 2010 by census tract in Buffalo, NY</p>
+<p>This figure is a map of overall crime frequency over time by type</p>
+<pre class="r"><code>ggplot(crimeALL) + geom_line(aes(x = crime_date, y = total, color = parent_incident_type)) + 
+  labs(x = &quot;Year&quot;, y = &quot;Total crime&quot;, color = &quot;Crime type&quot;)</code></pre>
+<div class="figure">
+<img src="index_files/figure-html/unnamed-chunk-11-1.png" alt="Crime Over Time" width="960" />
+<p class="caption">
+Crime Over Time
+</p>
+</div>
+<p>This figure is a map of median income and average crime per capita for 2010 by census tract in Buffalo, NY</p>
 <pre class="r"><code>mapinc10 &lt;- ggplot(cpp2010) + geom_sf(aes(fill = MedianInc)) +
   scale_fill_viridis_c() + labs(fill = &quot;Median Income&quot;) +
   theme(panel.background = element_blank())
@@ -690,12 +1796,12 @@ mapcrime10 &lt;- ggplot(cpp2010) + geom_sf(aes(fill = AvgCPC)) +
 
 grid.arrange(mapinc10, mapcrime10, nrow = 1)</code></pre>
 <div class="figure">
-<img src="index_files/figure-html/unnamed-chunk-11-1.png" alt="2010 Income and Crime" width="960" />
+<img src="index_files/figure-html/unnamed-chunk-12-1.png" alt="2010 Income and Crime" width="960" />
 <p class="caption">
 2010 Income and Crime
 </p>
 </div>
-<p>This figure is a map of median income and median crime for 2017 by census tract in Buffalo, NY</p>
+<p>This figure is a map of median income and average crime per capita for 2017 by census tract in Buffalo, NY</p>
 <pre class="r"><code>mapinc17 &lt;- ggplot(cpp2017) + geom_sf(aes(fill = MedianInc)) +
   scale_fill_viridis_c() + labs(fill = &quot;Median Income&quot;) + 
   theme(panel.background = element_blank())
@@ -706,7 +1812,7 @@ mapcrime17 &lt;- ggplot(cpp2017) + geom_sf(aes(fill = AvgCPC)) +
 
 grid.arrange(mapinc17, mapcrime17, nrow = 1)</code></pre>
 <div class="figure">
-<img src="index_files/figure-html/unnamed-chunk-12-1.png" alt="2017 Income and Crime" width="960" />
+<img src="index_files/figure-html/unnamed-chunk-13-1.png" alt="2017 Income and Crime" width="960" />
 <p class="caption">
 2017 Income and Crime
 </p>
@@ -719,23 +1825,33 @@ grid.arrange(mapinc17, mapcrime17, nrow = 1)</code></pre>
   theme(panel.background = element_blank()) +
   labs(fill = &quot;Avg Homicide PC&quot;)
 
-grid.arrange(mapinc17, hom2010map, nrow = 1)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-13-1.png" width="960" /></p>
+grid.arrange(mapinc10, hom2010map, nrow = 1)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-14-1.png" width="960" /></p>
 <p>Homicide 2017</p>
 <pre class="r"><code>hom2017map &lt;- ggplot(avghom2017) + geom_sf(aes(fill = AvgHom)) + scale_fill_viridis_c() +
   theme(panel.background = element_blank()) +
   labs(fill = &quot;Avg Homicide PC&quot;)
 
 grid.arrange(mapinc17, hom2017map, nrow = 1)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-14-1.png" width="960" /></p>
+<p><img src="index_files/figure-html/unnamed-chunk-15-1.png" width="960" /></p>
+<p>Assault2010</p>
+<pre class="r"><code>assault2010map &lt;- ggplot(avgAss2010) + geom_sf(aes(fill = AvgAssault)) + scale_fill_viridis_c() + 
+  theme(panel.background = element_blank()) +
+  labs(fill = &quot;Avg Assault PC&quot;)
+
+grid.arrange(mapinc10, assault2010map, nrow = 1)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-16-1.png" width="960" /> Assault2017</p>
+<pre class="r"><code>assault2017map &lt;- ggplot(avgAss2017) + geom_sf(aes(fill = AvgAssault)) + scale_fill_viridis_c() +
+  theme(panel.background = element_blank()) +
+  labs(fill = &quot;Avg Assault PC&quot;)
+
+grid.arrange(mapinc17, assault2017map, nrow = 1)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-17-1.png" width="960" /> # Conclusions Overall, it does not seem like median income alone has a large impact on crime. However, the relationship between crime and median income is higher when examining violent crimes, particularly in 2017. Median income was statistically correlated with homicide, assault, and breaking &amp; entering, but not theft or sexual offenses for 2017.</p>
 </div>
-</div>
-<div id="conclusions" class="section level1">
-<h1>Conclusions</h1>
-<p>Overall, it does not seem like median income alone has a large impact on crime. However, the relationship between crime and median income is higher when examining violent crimes, particularly in 2017. Median income was statistically correlated with homicide, assault, and breaking &amp; entering, but not theft or sexual offenses for 2017.</p>
 </div>
 <div id="references" class="section level1">
 <h1>References</h1>
+<p><a href="https://data.buffalony.gov/Public-Safety/Crime-Incidents/d6g9-xbgu" class="uri">https://data.buffalony.gov/Public-Safety/Crime-Incidents/d6g9-xbgu</a></p>
 <p>Friedson, Michael and Patrick Sharkey. 2015. “Violence and Neighborhood Disadvantage after the Crime Decline.” <em>The American Academy of Political &amp; Social Science</em> 660.</p>
 <p>Papachristos, Andrew V. 2013. “48 Years of Crime in Chicago: A Descriptive Analysis of Serious Crime Trends from 1965 to 2013.” <em>Institution for Social and Policy Studies</em>.</p>
 <p>Van Wilsem, Johan. Karin Whitebrood, Nan Dirk De Graaf. 2006. “Socioeconomic Dynamics of Neighborhoods and the Risk of Crime Victimization: A Multilevel Study of Improving, Declining, and Stable Areas in the Netherlands.” <em>Social Problems</em> 53(2):226-247.</p>
