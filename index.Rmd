@@ -18,6 +18,7 @@ Crime rates have decreased for all types of crime since the 1990s, although most
 
 ## 1. Load required packages.
 ```{r, message=F, warning=F}
+rm(list=ls())
 library(tidycensus)
 library(tidyverse)
 library(readr)
@@ -27,7 +28,6 @@ library(lubridate)
 library(seg)
 library(sf)
 library(tigris)
-library(plotly)
 library(gridExtra)
 library(spgwr)
 ```
@@ -75,7 +75,7 @@ totalpop2010 <- get_acs(geography = "tract",
 
 
 ```
-
+Crop census data to Buffalo city limits
 ``` {r, results = "hide", cache = TRUE, message=F, warning=F}
 
 #Crop census data to city limits
@@ -132,14 +132,6 @@ c2010_spread[is.na(c2010_spread)] <- 0
 
 ```
 
-Clean crime data for time series analysis
-```{r}
-crimeALL <- crime_year %>%
-     filter(crime_date >= 2010 & crime_date <= 2017) %>%
-     group_by(parent_incident_type, crime_date) %>%
-    summarize(total = n()) %>%
-    st_set_geometry(NULL)
-```
 Clean income data and join datasets
 ```{r, cache = TRUE}
 #Remove and rename columns
@@ -172,7 +164,7 @@ inc_pop2010 <- cbind(income_clean10, pop2010_clean) %>%
   select(-NAME.1, -geometry.1)
 ```
 
-
+Calculate avg crime rate per person
 ```{r,cache=TRUE,message=F,warning=F}
 #Find mean total crime per tract
 crimeAvg2017 <- crime_income2017 %>%
@@ -201,6 +193,7 @@ cpp2010 <- crime_pop2010 %>%
   mutate(AvgCPC = (meancrime/Population))
 ```
 
+Join population data with crime data
 ```{r, message=F, warning=F}
 #Join population and crime_spread 2010
 crimetype_pop10 <- cbind(crime_income2010, pop2010_clean)
@@ -211,18 +204,78 @@ avghom2010 <- crimetype_pop10 %>%
 avgAss2010 <- crimetype_pop10 %>%
   mutate(AvgAssault = (Assault/Population))
 
+avgBE2010 <- crimetype_pop10 %>%
+  mutate(AvgBreaking_entering = (Breaking_entering/Population))
+
+avgTheft2010 <- crimetype_pop10 %>%
+  mutate(AvgTheft = (Theft/Population))
+
+avgSO2010 <- crimetype_pop10 %>%
+  mutate(avgSO = (Sexual_Offenses/Population))
+
 #Join population and crime_spread 2017
 crimetype_pop17 <- cbind(crime_income2017, pop2017_clean)
 
 avghom2017 <- crimetype_pop17 %>%
   mutate(AvgHom = (Homicide/Population))
 
-avgAss2017 <- crimetype_pop10 %>%
+avgAss2017 <- crimetype_pop17 %>%
   mutate(AvgAssault = (Assault/Population))
+
+avgBE2017 <- crimetype_pop17 %>%
+  mutate(AvgBreaking_entering = (Breaking_entering/Population))
+
+avgTheft2017 <- crimetype_pop17 %>%
+  mutate(AvgTheft = (Theft/Population))
+
+avgSO2017 <- crimetype_pop17 %>%
+  mutate(avgSO = (Sexual_Offenses/Population))
 ```
 
+
+Clean crime data for time series analysis
+```{r}
+# Clean for all of Buffalo
+crimeALL <- crime_year %>%
+     filter(crime_date >= 2010 & crime_date <= 2017) %>%
+     group_by(NAME, parent_incident_type, crime_date) %>%
+    summarize(total = n()) %>%
+    st_set_geometry(NULL)
+
+# Don't group by tract name for overall time series
+crimeALLplot <- crime_year %>%
+  filter(crime_date >= 2010 & crime_date <= 2017) %>%
+     group_by(parent_incident_type, crime_date) %>%
+    summarize(total = n()) %>%
+    st_set_geometry(NULL)
+  
+# crop crimeALL for Elmwood tracts
+elmwoodcrop <- crimeALL[c(569:600,2301:2571),]
+
+elmwood <- elmwoodcrop %>%
+  group_by(parent_incident_type, crime_date) %>%
+  spread(parent_incident_type, total)
+
+elmwood[is.na(elmwood)] <- 0
+
+elmwoodavg <- summarize(elmwood, avg = mean(c(Assault, Breaking_entering, Sexual_Offenses, Homicide, Theft)))
+
+
+# Crop for waterfront tracts 
+waterfrontcrop <- crimeALL[c(2263:2300,2572:2642,2675:2810,574:710),]
+
+# Clean for waterfront
+waterfront <- waterfrontcrop %>%
+  group_by(parent_incident_type, crime_date) %>%
+  spread(parent_incident_type, total)
+
+waterfront[is.na(waterfront)] <- 0
+
+waterfrontavg <- summarize(waterfront, avg = mean(c(Assault, Breaking_entering, Sexual_Offenses, Homicide, Theft)))
+
+```
 ## 4. Run regression/plot the relationship between crime and median income
-Relationship between crime and income
+Plot relationship between crime and income
 ```{r, results='asis', cache = TRUE, message=F, warning=F}
 #2010 plot
 ggplot(cpp2010) + geom_point(aes(x = MedianInc, y = AvgCPC)) +
@@ -231,6 +284,28 @@ ggplot(cpp2010) + geom_point(aes(x = MedianInc, y = AvgCPC)) +
 #2017 plot
 ggplot(cpp2017) + geom_point(aes(x = MedianInc, y = AvgCPC)) +
   labs(x = "Median Income 2017", y = "Average Crime Per Capita 2017", title = "Relationship between Median Income and Crime Per Capita in 2017")
+
+```
+
+Relationship between crime and income 2010
+```{r}
+#2010 regression
+Assault2010_reg <- lm(Assault~MedianInc, data = crimetype_pop10)
+summary(Assault2010_reg)
+
+Theft2010_reg <- lm(Theft~MedianInc, data = crimetype_pop10)
+summary(Theft2010_reg)
+
+BE2010_reg <- lm(Breaking_entering~MedianInc, data = crimetype_pop10)
+summary(BE2010_reg)
+
+#No correlation
+SO2010_reg <- lm(Sexual_Offenses~MedianInc, data = crimetype_pop10)
+summary(SO2010_reg)
+
+#Highest correlation
+Hom2010_reg <- lm(Homicide~MedianInc, data = crimetype_pop10)
+summary(Hom2010_reg)
 
 ```
 
@@ -253,22 +328,6 @@ summary(SO2017_reg)
 #Highest correlation
 Hom2017_reg <- lm(Homicide~MedianInc, data = crimetype_pop17)
 summary(Hom2017_reg)
-
-#Plot relationship between homicide and crime
-ggplot(avghom2017) + geom_point(aes(x = MedianInc, y = Homicide)) + labs(x = "Median Income 2017", y = "Homicide Per Capita 2017", title = "Relationship between Median Income and Homicide Per Capita in 2017")
-
-crimetype_pop17sp <- as(crimetype_pop17, "Spatial")
-bw <- ggwr.sel(Homicide~MedianInc, data = crimetype_pop17sp)
-
-#Calculate global weighted regression
-GWRhom2017 <- gwr(Homicide~MedianInc, data = crimetype_pop17sp, bandwidth = bw, hatmatrix = TRUE, longlat =TRUE)
-spplot(crimetype_pop17sp,"Homicide")
-
-GWRass2017 <- gwr(Assault~MedianInc, data = crimetype_pop17sp, bandwidth = bw, hatmatrix = TRUE, longlat =TRUE)
-spplot(crimetype_pop17sp,"Assault")
-
-str(GWRhom2017)
-GWRass2017
 ```
 
 # Results
@@ -278,8 +337,16 @@ GWRass2017
 
 This figure is a map of overall crime frequency over time by type
 ```{r, fig.width=10, fig.height=5, fig.cap="Crime Over Time"}
-ggplot(crimeALL) + geom_line(aes(x = crime_date, y = total, color = parent_incident_type)) + 
+ggplot(crimeALLplot) + geom_line(aes(x = crime_date, y = total, color = parent_incident_type)) + 
   labs(x = "Year", y = "Total crime", color = "Crime type")
+```
+This figure is a map of the average crime rate for all types betweeen 2010 and 2017 in Elmwood Village
+```{r, fig.width=10, fig.height=5, fig.cap="Average crime between 2010 and 2017 in Elmwood Village"}
+ggplot(elmwoodavg) + geom_line(aes(x = crime_date, y = avg))
+```
+This figure is a map of average crime rate for all types between 2010 and 2017 in Buffalo's Waterfront Area.
+```{r, fig.width=10, fig.height=5, fig.cap="Average crime between 2010 and 2017 in Buffalo's Waterfront Area"}
+ggplot(waterfrontavg) + geom_line(aes(x = crime_date, y = avg))
 ```
 
 This figure is a map of median income and average crime per capita for 2010 by census tract in Buffalo, NY
@@ -349,8 +416,59 @@ assault2017map <- ggplot(avgAss2017) + geom_sf(aes(fill = AvgAssault)) + scale_f
 
 grid.arrange(mapinc17, assault2017map, nrow = 1)
 ```
+
+Breaking & Entering 2010
+```{r,fig.width=10, fig.height=5}
+be2010map <- ggplot(avgBE2010) + geom_sf(aes(fill = AvgBreaking_entering)) + scale_fill_viridis_c() + 
+  theme(panel.background = element_blank()) +
+  labs(fill = "Avg Break&Ent. PC")
+
+grid.arrange(mapinc10, be2010map, nrow = 1)
+```
+
+Breaking & Entering 2017
+```{r,fig.width=10, fig.height=5}
+be2017map <- ggplot(avgBE2017) + geom_sf(aes(fill = AvgBreaking_entering)) + scale_fill_viridis_c() + 
+  theme(panel.background = element_blank()) +
+  labs(fill = "Avg Break&Ent. PC")
+
+grid.arrange(mapinc17, be2017map, nrow = 1)
+```
+Theft 2010
+```{r,fig.width=10, fig.height=5}
+theft2010map <- ggplot(avgTheft2010) + geom_sf(aes(fill = AvgTheft)) + scale_fill_viridis_c() + 
+  theme(panel.background = element_blank()) +
+  labs(fill = "Avg Theft PC")
+
+grid.arrange(mapinc10, theft2010map, nrow = 1)
+```
+Theft 2017
+```{r,fig.width=10, fig.height=5}
+theft2017map <- ggplot(avgTheft2017) + geom_sf(aes(fill = AvgTheft)) + scale_fill_viridis_c() + 
+  theme(panel.background = element_blank()) +
+  labs(fill = "Avg Theft PC")
+
+grid.arrange(mapinc17, theft2017map, nrow = 1)
+```
+Sexual_offenses 2010
+```{r,fig.width=10, fig.height=5}
+so2010map <- ggplot(avgSO2017) + geom_sf(aes(fill = avgSO)) + scale_fill_viridis_c() + 
+  theme(panel.background = element_blank()) +
+  labs(fill = "Avg Sex. Off. PC")
+
+grid.arrange(mapinc10, so2010map, nrow = 1)
+```
+
+Sexual_offenses 2017
+```{r,fig.width=10, fig.height=5}
+so2017map <- ggplot(avgSO2017) + geom_sf(aes(fill = avgSO)) + scale_fill_viridis_c() + 
+  theme(panel.background = element_blank()) +
+  labs(fill = "Avg Sex. Off. PC")
+
+grid.arrange(mapinc17, so2017map, nrow = 1)
+```
 # Conclusions
-Overall, it does not seem like median income alone has a large impact on crime. However, the relationship between crime and median income is higher when examining violent crimes, particularly in 2017. Median income was statistically correlated with homicide, assault, and breaking & entering, but not theft or sexual offenses for 2017.
+Overall, it seems that median income has a moderate impact on crime. Crime has decreased overall in Buffalo, but there is no pattern in decrease by any particular crime type. The relationship between crime and median income is higher when examining violent crimes.......NAME CRIMES specifically show a higher rate of crime for WHICH TYPES in tracts that have lower median incomes....These results suggest that median income plays a role in crime rate, but is not the sole determinant. There are likely other factors that determine crime rates in an area, and these may differ depending on the area being examined.
 
 # References
 
