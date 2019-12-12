@@ -378,13 +378,13 @@ div.tocify {
 
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
-<p>Crime rates have decreased for all types of crime since the 1990s, although most considerably for violent crimes (Papachristos 2013). However, crime rates vary depending on the social composition of a neighborhood. Disadvantaged neighborhoods are disproportionately low-income with weak social ties and high residential instability (Zuberi 2012). The concentration of poverty, violence, and high policing in disadvantaged neighborhoods hinder residents’ ability to form social cohesion and community organization, increasing residents’ risk of victimization and limiting social control (Van Wilsem, Wittebrood, De Graaf 2006). Disadvantaged neighborhoods are also often policed at higher rates than their counterparts. The high poverty and policing combined with lack of social control and low social cohesion in disadvantaged neighborhoods leads to increased crime rates in these areas (Van Wilsem et al. 2006). Violent crime, in particular, is more prevalent in urban, disadvantaged neighborhoods (Friedson and Sharkey 2015). However, few studies have examined whether the type of crimes committed in disadvantaged neighborhoods are different from those committed in less disadvantaged areas. By examining census data and crime data from Buffalo, New York I want to answer three questions: 1) Are the types of crime being committed in low-income census tracts different from those in higher income tracts? 2) Have census tracts witnessed an overall decrease in crime between 2010 and 2017? 3) If so, does the decrease differ by crime type? To answer my questions, I will compare crime rates by type of crime incident between 2010 to crime rates in 2017. I measure neighborhood disadvantage using census tract data in Buffalo, New York on median income from the 2010 and 2017 ACS. Crime data comes from the public PenData Buffalo and can be broken into five categories: assault, breaking and entering, homicide, sexual offenses, and theft. I predict that, although crime rates for all types are likely higher in lower income neighborhoods, the difference is likely greater for violent crimes. I also hypothesize that there will be a decrease in crimes rates between 2010 and 2017 for all tracts, but more noticeably for violent crimes, as opposed to property crimes.</p>
+<p>Crime rates have decreased for all types of crime since the 1990s, although most considerably for violent crimes (Papachristos 2013). However, crime rates vary depending on the social composition of a neighborhood. Disadvantaged neighborhoods are disproportionately low-income with weak social ties and high residential instability, attributes often correlated with crime (Zuberi 2012). The concentration of poverty, violence, and high policing in disadvantaged neighborhoods hinders residents’ ability to form social cohesion and community organization, increasing residents’ risk of victimization (Van Wilsem, Wittebrood, De Graaf 2006). Violent crime, in particular, is more prevalent in urban, disadvantaged neighborhoods (Friedson and Sharkey 2015). However, few studies have examined whether the relationship between neighborhood disadvantage and crime varies by crime type. It is also well known that neighborhoods with a high immigrant population have lower crime rates (Adelman 2019). Buffalo’s Waterfront Area has a high immigrant population and has undergone recent developments aimed at resurgence (Adelman 2019). Elmwood Village has also seen continuous development. In order to determine whether recent developments infuence crime rates, I look at crime trends for these two areas as well as the entire city of Buffalo. By examining census data and crime data I answer four questions: 1) Has crime decreased in Buffalo, NY since 2010? 2) If so, does the decrease differ by crime type? 3) Has this decrease occurred more substantially in areas with a high immigrant population or areas that have undergone recent development (Elmwood Village and Waterfront Area)? 4) Does the relationship between median income and crime vary by crime type? To answer my questions, I compare crime rates by type of crime incident between 2010 to crime rates in 2017. I measure neighborhood disadvantage using census tract data in Buffalo, New York on median income from the 2010 and 2017 ACS. Crime data comes from OpenData Buffalo and can be broken into five categories: assault, breaking and entering, homicide, sexual offenses, and theft. I hypothesize that there will be a decrease in crime rates from 2010 to 2017 for all tracts, but more noticeably for violent crimes, as opposed to property crimes and that this decrease will be more substantial when examining developed neighborhoods. I also predict that the relationship between median income and crime will be greater for violent crimes.</p>
 </div>
 <div id="materials-and-methods" class="section level1">
 <h1>Materials and methods</h1>
 <ol style="list-style-type: decimal">
 <li>Load required packages</li>
-<li>Download crime data from buffalony.gov and 2010 and 2017 ACS estimates for income data in Erie County</li>
+<li>Download crime data from OpenDataBuffalo and 2010 and 2017 ACS estimates for income data in Erie County</li>
 <li>Clean and join data</li>
 <li>Run regression on types of crime and income level</li>
 <li>Create figures</li>
@@ -852,27 +852,25 @@ summary(Hom2017_reg)</code></pre>
 </div>
 <div id="results" class="section level1">
 <h1>Results</h1>
-<div id="plot-median-income-and-crime-per-capita-for-2010-and-2017" class="section level3">
-<h3>Plot median income and crime per capita for 2010 and 2017</h3>
-<p>This figure is a map of overall crime frequency over time by type</p>
+<p>##5. Create figures Plot median income and crime per capita for 2010 and 2017</p>
 <pre class="r"><code>ggplot(crimeALLplot) + geom_line(aes(x = crime_date, y = total, color = parent_incident_type)) + 
-  labs(x = &quot;Year&quot;, y = &quot;Total crime&quot;, color = &quot;Crime type&quot;)</code></pre>
+  labs(x = &quot;Year&quot;, y = &quot;Total crime&quot;, color = &quot;Crime type&quot;, title = &quot;Crime Frequency Over Time&quot;)</code></pre>
 <div class="figure">
 <img src="index_files/figure-html/unnamed-chunk-12-1.png" alt="Crime Over Time" width="960" />
 <p class="caption">
 Crime Over Time
 </p>
 </div>
-<p>This figure is a map of the average crime rate for all types betweeen 2010 and 2017 in Elmwood Village</p>
-<pre class="r"><code>ggplot(elmwoodavg) + geom_line(aes(x = crime_date, y = avg))</code></pre>
+<pre class="r"><code>ggplot(elmwoodavg) + geom_line(aes(x = crime_date, y = avg)) + 
+  labs(x = &quot;Year&quot;, y = &quot;Average Crime Rate&quot;, title = &quot;Average Crime Rate Over Time in Elmwood Village&quot;)</code></pre>
 <div class="figure">
 <img src="index_files/figure-html/unnamed-chunk-13-1.png" alt="Average crime between 2010 and 2017 in Elmwood Village" width="960" />
 <p class="caption">
 Average crime between 2010 and 2017 in Elmwood Village
 </p>
 </div>
-<p>This figure is a map of average crime rate for all types between 2010 and 2017 in Buffalo’s Waterfront Area.</p>
-<pre class="r"><code>ggplot(waterfrontavg) + geom_line(aes(x = crime_date, y = avg))</code></pre>
+<pre class="r"><code>ggplot(waterfrontavg) + geom_line(aes(x = crime_date, y = avg)) + 
+  labs(x = &quot;Year&quot;, y = &quot;Average Crime Rate&quot;, title = &quot;Average Crime Rate Over Time in Buffalo&#39;s Waterfront Area&quot;)</code></pre>
 <div class="figure">
 <img src="index_files/figure-html/unnamed-chunk-14-1.png" alt="Average crime between 2010 and 2017 in Buffalo's Waterfront Area" width="960" />
 <p class="caption">
@@ -881,11 +879,11 @@ Average crime between 2010 and 2017 in Buffalo’s Waterfront Area
 </div>
 <p>This figure is a map of median income and average crime per capita for 2010 by census tract in Buffalo, NY</p>
 <pre class="r"><code>mapinc10 &lt;- ggplot(cpp2010) + geom_sf(aes(fill = MedianInc)) +
-  scale_fill_viridis_c() + labs(fill = &quot;Median Income&quot;) +
+  scale_fill_viridis_c() + labs(fill = &quot;Median Income&quot;, title = &quot;Median Income 2010&quot;) +
   theme(panel.background = element_blank())
 
 mapcrime10 &lt;- ggplot(cpp2010) + geom_sf(aes(fill = AvgCPC)) + 
-  scale_fill_viridis_c() + labs(fill = &quot;Average CPC&quot;) +
+  scale_fill_viridis_c() + labs(fill = &quot;Average CPC&quot;, title = &quot;Crime Per Capita 2010&quot;) +
   theme(panel.background = element_blank())
 
 grid.arrange(mapinc10, mapcrime10, nrow = 1)</code></pre>
@@ -897,7 +895,7 @@ grid.arrange(mapinc10, mapcrime10, nrow = 1)</code></pre>
 </div>
 <p>This figure is a map of median income and average crime per capita for 2017 by census tract in Buffalo, NY</p>
 <pre class="r"><code>mapinc17 &lt;- ggplot(cpp2017) + geom_sf(aes(fill = MedianInc)) +
-  scale_fill_viridis_c() + labs(fill = &quot;Median Income&quot;) + 
+  scale_fill_viridis_c() + labs(fill = &quot;Median Income&quot;, title = &quot;Median Income 2017&quot;) + 
   theme(panel.background = element_blank())
 
 mapcrime17 &lt;- ggplot(cpp2017) + geom_sf(aes(fill = AvgCPC)) + 
@@ -911,82 +909,130 @@ grid.arrange(mapinc17, mapcrime17, nrow = 1)</code></pre>
 2017 Income and Crime
 </p>
 </div>
-</div>
 <div id="plot-crime-by-type" class="section level2">
 <h2>Plot crime by type</h2>
-<p>Homicide 2010</p>
 <pre class="r"><code>hom2010map &lt;- ggplot(avghom2010) + geom_sf(aes(fill = AvgHom)) + scale_fill_viridis_c() + 
   theme(panel.background = element_blank()) +
-  labs(fill = &quot;Avg Homicide PC&quot;)
+  labs(fill = &quot;Avg Homicide PC&quot;, title = &quot;Homicide Per Capita 2010&quot;)
 
 grid.arrange(mapinc10, hom2010map, nrow = 1)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-17-1.png" width="960" /></p>
-<p>Homicide 2017</p>
+<div class="figure">
+<img src="index_files/figure-html/unnamed-chunk-17-1.png" alt="Homicide 2010" width="960" />
+<p class="caption">
+Homicide 2010
+</p>
+</div>
 <pre class="r"><code>hom2017map &lt;- ggplot(avghom2017) + geom_sf(aes(fill = AvgHom)) + scale_fill_viridis_c() +
   theme(panel.background = element_blank()) +
-  labs(fill = &quot;Avg Homicide PC&quot;)
+  labs(fill = &quot;Avg Homicide PC&quot;, title = &quot;Homicide Per Capita 2017&quot;)
 
 grid.arrange(mapinc17, hom2017map, nrow = 1)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-18-1.png" width="960" /></p>
-<p>Assault2010</p>
+<div class="figure">
+<img src="index_files/figure-html/unnamed-chunk-18-1.png" alt="Homicide 2017" width="960" />
+<p class="caption">
+Homicide 2017
+</p>
+</div>
 <pre class="r"><code>assault2010map &lt;- ggplot(avgAss2010) + geom_sf(aes(fill = AvgAssault)) + scale_fill_viridis_c() + 
   theme(panel.background = element_blank()) +
-  labs(fill = &quot;Avg Assault PC&quot;)
+  labs(fill = &quot;Avg Assault PC&quot;, title = &quot;Assault Per Capita 2010&quot;)
 
 grid.arrange(mapinc10, assault2010map, nrow = 1)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-19-1.png" width="960" /> Assault2017</p>
+<div class="figure">
+<img src="index_files/figure-html/unnamed-chunk-19-1.png" alt="Assault2010" width="960" />
+<p class="caption">
+Assault2010
+</p>
+</div>
 <pre class="r"><code>assault2017map &lt;- ggplot(avgAss2017) + geom_sf(aes(fill = AvgAssault)) + scale_fill_viridis_c() +
   theme(panel.background = element_blank()) +
-  labs(fill = &quot;Avg Assault PC&quot;)
+  labs(fill = &quot;Avg Assault PC&quot;, title = &quot;Assault Per Capita 2017&quot;)
 
 grid.arrange(mapinc17, assault2017map, nrow = 1)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-20-1.png" width="960" /></p>
-<p>Breaking &amp; Entering 2010</p>
+<div class="figure">
+<img src="index_files/figure-html/unnamed-chunk-20-1.png" alt="Assault2017" width="960" />
+<p class="caption">
+Assault2017
+</p>
+</div>
 <pre class="r"><code>be2010map &lt;- ggplot(avgBE2010) + geom_sf(aes(fill = AvgBreaking_entering)) + scale_fill_viridis_c() + 
   theme(panel.background = element_blank()) +
-  labs(fill = &quot;Avg Break&amp;Ent. PC&quot;)
+  labs(fill = &quot;Avg Break&amp;Ent. PC&quot;, title = &quot;Breaking &amp; Entering Per Capita 2010&quot;)
 
 grid.arrange(mapinc10, be2010map, nrow = 1)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-21-1.png" width="960" /></p>
-<p>Breaking &amp; Entering 2017</p>
+<div class="figure">
+<img src="index_files/figure-html/unnamed-chunk-21-1.png" alt="Breaking &amp; Entering 2010" width="960" />
+<p class="caption">
+Breaking &amp; Entering 2010
+</p>
+</div>
 <pre class="r"><code>be2017map &lt;- ggplot(avgBE2017) + geom_sf(aes(fill = AvgBreaking_entering)) + scale_fill_viridis_c() + 
   theme(panel.background = element_blank()) +
-  labs(fill = &quot;Avg Break&amp;Ent. PC&quot;)
+  labs(fill = &quot;Avg Break&amp;Ent. PC&quot;, title = &quot;Breaking &amp; Entering Per Capita 2017&quot;)
 
-grid.arrange(mapinc10, be2017map, nrow = 1)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-22-1.png" width="960" /> Theft 2010</p>
+grid.arrange(mapinc17, be2017map, nrow = 1)</code></pre>
+<div class="figure">
+<img src="index_files/figure-html/unnamed-chunk-22-1.png" alt="Breaking &amp; Entering 2017" width="960" />
+<p class="caption">
+Breaking &amp; Entering 2017
+</p>
+</div>
 <pre class="r"><code>theft2010map &lt;- ggplot(avgTheft2010) + geom_sf(aes(fill = AvgTheft)) + scale_fill_viridis_c() + 
   theme(panel.background = element_blank()) +
-  labs(fill = &quot;Avg Theft PC&quot;)
+  labs(fill = &quot;Avg Theft PC&quot;, title = &quot;Theft Per Capita 2010&quot;)
 
 grid.arrange(mapinc10, theft2010map, nrow = 1)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-23-1.png" width="960" /> Theft 2017</p>
+<div class="figure">
+<img src="index_files/figure-html/unnamed-chunk-23-1.png" alt="Theft 2010" width="960" />
+<p class="caption">
+Theft 2010
+</p>
+</div>
 <pre class="r"><code>theft2017map &lt;- ggplot(avgTheft2017) + geom_sf(aes(fill = AvgTheft)) + scale_fill_viridis_c() + 
   theme(panel.background = element_blank()) +
-  labs(fill = &quot;Avg Theft PC&quot;)
+  labs(fill = &quot;Avg Theft PC&quot;, title = &quot;Theft Per Capita 2010&quot;)
 
 grid.arrange(mapinc17, theft2017map, nrow = 1)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-24-1.png" width="960" /> Sexual_offenses 2010</p>
+<div class="figure">
+<img src="index_files/figure-html/unnamed-chunk-24-1.png" alt="Theft 2017" width="960" />
+<p class="caption">
+Theft 2017
+</p>
+</div>
 <pre class="r"><code>so2010map &lt;- ggplot(avgSO2017) + geom_sf(aes(fill = avgSO)) + scale_fill_viridis_c() + 
   theme(panel.background = element_blank()) +
-  labs(fill = &quot;Avg Sex. Off. PC&quot;)
+  labs(fill = &quot;Avg Sex. Off. PC&quot;, title  = &quot;Sexual Offenses Per Capita 2010&quot;)
 
 grid.arrange(mapinc10, so2010map, nrow = 1)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-25-1.png" width="960" /></p>
-<p>Sexual_offenses 2017</p>
+<div class="figure">
+<img src="index_files/figure-html/unnamed-chunk-25-1.png" alt="Sexual Offenses 2010" width="960" />
+<p class="caption">
+Sexual Offenses 2010
+</p>
+</div>
 <pre class="r"><code>so2017map &lt;- ggplot(avgSO2017) + geom_sf(aes(fill = avgSO)) + scale_fill_viridis_c() + 
   theme(panel.background = element_blank()) +
-  labs(fill = &quot;Avg Sex. Off. PC&quot;)
+  labs(fill = &quot;Avg Sex. Off. PC&quot;, title  = &quot;Sexual Offenses Per Capita 2017&quot;)
 
 grid.arrange(mapinc17, so2017map, nrow = 1)</code></pre>
-<p><img src="index_files/figure-html/unnamed-chunk-26-1.png" width="960" /> # Conclusions Overall, it does not seem like median income alone has a large impact on crime. However, the relationship between crime and median income is higher when examining violent crimes, particularly in 2017. Median income was statistically correlated with homicide, assault, and breaking &amp; entering, but not theft or sexual offenses for 2017.</p>
+<div class="figure">
+<img src="index_files/figure-html/unnamed-chunk-26-1.png" alt="Sexual Offenses 2017" width="960" />
+<p class="caption">
+Sexual Offenses 2017
+</p>
 </div>
+</div>
+</div>
+<div id="conclusions" class="section level1">
+<h1>Conclusions</h1>
+<p>Overall, crime has decreased in Buffalo, NY. Contrary to my hypothesis, crime has decreased most steadily for theft and breaking and entering, as opposed to violent crimes. By examining two areas of Buffalo (Elmwood Village and the Waterfront Area) that have undergone recent development aimed at improving neighborhood conditions, it is evident that these areas have experienced a substantial decrease in crime since 2010, likely as a result of these developments, as well as the high immigrant population (Adelman et al. 2019).There is a moderate relationship between crime and median income. Median income is significantly associated with assault, breaking and entering, sexual offenses, and homicide in 2010 and assault, breaking and entering, and homicide in 2017. In support of my hypothesis, median income has a higher correlation with violent crimes than property crimes for both 2010 and 2017. The relationship between income and crime appears to be higher when examining 2017 data, possibly due to increasing gentrification and thus concentrated disadvantage in these areas, although more research needs to be done to determine if this is the case. In summary, median income plays a role in the level of crime in an area, but there are likely other social conditions as well influencing crime rates in Buffalo, NY.</p>
 </div>
 <div id="references" class="section level1">
 <h1>References</h1>
-<p><a href="https://data.buffalony.gov/Public-Safety/Crime-Incidents/d6g9-xbgu" class="uri">https://data.buffalony.gov/Public-Safety/Crime-Incidents/d6g9-xbgu</a></p>
-<p>Friedson, Michael and Patrick Sharkey. 2015. “Violence and Neighborhood Disadvantage after the Crime Decline.” <em>The American Academy of Political &amp; Social Science</em> 660.</p>
+<p>OpenDataBuffalo. <a href="https://data.buffalony.gov/Public-Safety/Crime-Incidents/d6g9-xbgu" class="uri">https://data.buffalony.gov/Public-Safety/Crime-Incidents/d6g9-xbgu</a></p>
+<p>Adelman, Robert M., Aysegul Balta Ozgen, and Watoii Rabii. 2019. “Buffalo’s West Side Story: Migration, Gentrification, and Neighborhood Change.” <em>City &amp; Community</em> 1-22. Friedson, Michael and Patrick Sharkey. 2015. “Violence and Neighborhood Disadvantage after the Crime Decline.” <em>The American Academy of Political &amp; Social Science</em> 660.</p>
 <p>Papachristos, Andrew V. 2013. “48 Years of Crime in Chicago: A Descriptive Analysis of Serious Crime Trends from 1965 to 2013.” <em>Institution for Social and Policy Studies</em>.</p>
+<p>U.S. Census Bureau 2010, 2017….</p>
 <p>Van Wilsem, Johan. Karin Whitebrood, Nan Dirk De Graaf. 2006. “Socioeconomic Dynamics of Neighborhoods and the Risk of Crime Victimization: A Multilevel Study of Improving, Declining, and Stable Areas in the Netherlands.” <em>Social Problems</em> 53(2):226-247.</p>
 <p>Zuberi, Anita. 2012. “Neighborhood Poverty and Children’s Exposure to Danger: Examining Gender Differences in Impacts of the Moving to Opportunity Experiment.” <em>Social Science Research</em> 41:788-801.</p>
 </div>
