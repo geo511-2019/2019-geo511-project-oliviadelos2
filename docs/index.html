@@ -378,7 +378,7 @@ div.tocify {
 
 <div id="introduction" class="section level1">
 <h1>Introduction</h1>
-<p>Crime rates have decreased for all types of crime since the 1990s, although most considerably for violent crimes (Papachristos 2013). However, crime rates vary depending on the social composition of a neighborhood. Disadvantaged neighborhoods are disproportionately low-income with weak social ties and high residential instability, attributes often correlated with crime (Zuberi 2012). The concentration of poverty, violence, and high policing in disadvantaged neighborhoods hinders residents’ ability to form social cohesion and community organization, increasing residents’ risk of victimization (Van Wilsem, Wittebrood, De Graaf 2006). Violent crime, in particular, is more prevalent in urban, disadvantaged neighborhoods (Friedson and Sharkey 2015). However, few studies have examined whether the relationship between neighborhood disadvantage and crime varies by crime type. It is also well known that neighborhoods with a high immigrant population have lower crime rates (Adelman 2019). Buffalo’s Waterfront Area has a high immigrant population and has undergone recent developments aimed at resurgence (Adelman 2019). Elmwood Village has also seen continuous development. In order to determine whether recent developments infuence crime rates, I look at crime trends for these two areas as well as the entire city of Buffalo. By examining census data and crime data I answer four questions: 1) Has crime decreased in Buffalo, NY since 2010? 2) If so, does the decrease differ by crime type? 3) Has this decrease occurred more substantially in areas with a high immigrant population or areas that have undergone recent development (Elmwood Village and Waterfront Area)? 4) Does the relationship between median income and crime vary by crime type? I measure neighborhood disadvantage using census tract data in Buffalo, New York on median income from the 2010 and 2017 ACS. Crime data comes from OpenData Buffalo and can be broken into five categories: assault, breaking and entering, homicide, sexual offenses, and theft. I hypothesize that there will be a decrease in crime rates from 2010 to 2017 for all tracts, but more noticeably for violent crimes, as opposed to property crimes and that this decrease will be more substantial when examining developed neighborhoods. I also predict that the relationship between median income and crime will be greater for violent crimes.</p>
+<p>Crime rates have decreased for all types of crime since the 1990s, although most considerably for violent crimes (Papachristos 2013). However, crime rates vary depending on the social composition of a neighborhood. Disadvantaged neighborhoods are disproportionately low-income with weak social ties and high residential instability, attributes often correlated with crime (Zuberi 2012). The concentration of poverty, violence, and high policing in disadvantaged neighborhoods hinders residents’ ability to form social cohesion and community organization, increasing residents’ risk of victimization (Van Wilsem, Wittebrood, De Graaf 2006). Violent crime, in particular, is more prevalent in urban, disadvantaged neighborhoods (Friedson and Sharkey 2015). However, few studies have examined whether the relationship between neighborhood disadvantage and crime varies by crime type. It is also well known that neighborhoods with a high immigrant population have lower crime rates (Adelman, Ozgen and Rabii 2019). Buffalo’s Waterfront Area has a high immigrant population and has undergone recent developments aimed at resurgence (Adelman et al. 2019). Elmwood Village has also seen continuous development. In order to determine whether recent developments infuence crime rates, I look at crime trends for these two areas as well as the entire city of Buffalo. By examining census data and crime data I answer four questions: 1) Has crime decreased in Buffalo, NY since 2010? 2) If so, does the decrease differ by crime type? 3) Has this decrease occurred more substantially in areas with a high immigrant population or areas that have undergone recent development (Elmwood Village and Waterfront Area)? 4) Does the relationship between median income and crime vary by crime type? I measure neighborhood disadvantage using census tract data in Buffalo, New York on median income from the 2010 and 2017 ACS. Crime data comes from OpenData Buffalo and can be broken into five categories: assault, breaking and entering, homicide, sexual offenses, and theft. I hypothesize that there will be a decrease in crime rates from 2010 to 2017 for all tracts, but more noticeably for violent crimes, as opposed to property crimes and that this decrease will be more substantial when examining developed neighborhoods. I also predict that the relationship between median income and crime will be greater for violent crimes.</p>
 </div>
 <div id="materials-and-methods" class="section level1">
 <h1>Materials and methods</h1>
@@ -852,7 +852,9 @@ summary(Hom2017_reg)</code></pre>
 </div>
 <div id="results" class="section level1">
 <h1>Results</h1>
-<p>##5. Create figures Plot median income and crime per capita for 2010 and 2017</p>
+<div id="create-figures" class="section level2">
+<h2>5. Create figures</h2>
+<p>Plot median income and crime per capita for 2010 and 2017</p>
 <pre class="r"><code>ggplot(crimeALLplot) + geom_line(aes(x = crime_date, y = total, color = parent_incident_type)) + 
   labs(x = &quot;Year&quot;, y = &quot;Total crime&quot;, color = &quot;Crime type&quot;, title = &quot;Crime Frequency Over Time&quot;)</code></pre>
 <div class="figure">
@@ -909,8 +911,8 @@ grid.arrange(mapinc17, mapcrime17, nrow = 1)</code></pre>
 2017 Income and Crime
 </p>
 </div>
-<div id="plot-crime-by-type" class="section level2">
-<h2>Plot crime by type</h2>
+<div id="plot-crime-by-type" class="section level3">
+<h3>Plot crime by type</h3>
 <pre class="r"><code>hom2010map &lt;- ggplot(avghom2010) + geom_sf(aes(fill = AvgHom)) + scale_fill_viridis_c() + 
   theme(panel.background = element_blank()) +
   labs(fill = &quot;Avg Homicide PC&quot;, title = &quot;Homicide Per Capita 2010&quot;)
@@ -1023,6 +1025,7 @@ Sexual Offenses 2017
 </div>
 </div>
 </div>
+</div>
 <div id="conclusions" class="section level1">
 <h1>Conclusions</h1>
 <p>Overall, crime has decreased in Buffalo, NY. Contrary to my hypothesis, crime has decreased most steadily for theft and breaking and entering, as opposed to violent crimes. By examining two areas of Buffalo (Elmwood Village and the Waterfront Area) that have undergone recent development aimed at improving neighborhood conditions, it is evident that these areas have experienced a substantial decrease in crime since 2010, likely as a result of these developments, as well as the high immigrant population (Adelman et al. 2019).There is a moderate relationship between crime and median income. Median income is significantly associated with assault, breaking and entering, sexual offenses, and homicide in 2010 and assault, breaking and entering, and homicide in 2017. In support of my hypothesis, median income has a higher correlation with violent crimes than property crimes for both 2010 and 2017. The relationship between income and crime appears to be higher when examining 2017 data, possibly due to increasing gentrification and thus concentrated disadvantage in these areas, although more research needs to be done to determine if this is the case. In summary, median income plays a role in the level of crime in an area, but there are likely other social conditions as well influencing crime rates in Buffalo, NY.</p>
@@ -1033,8 +1036,8 @@ Sexual Offenses 2017
 <p>Adelman, Robert M., Aysegul Balta Ozgen, and Watoii Rabii. 2019. “Buffalo’s West Side Story: Migration, Gentrification, and Neighborhood Change.” <em>City &amp; Community</em> 1-22.</p>
 <p>Friedson, Michael and Patrick Sharkey. 2015. “Violence and Neighborhood Disadvantage after the Crime Decline.” <em>The American Academy of Political &amp; Social Science</em> 660.</p>
 <p>Papachristos, Andrew V. 2013. “48 Years of Crime in Chicago: A Descriptive Analysis of Serious Crime Trends from 1965 to 2013.” <em>Institution for Social and Policy Studies</em>.</p>
-<p>U.S. Census Bureau, 2006-2010 American Community Survey 5-Year Estimates</p>
-<p>U.S. Census Bureau, 2013-2017 American Community Survey 5-Year Estimates</p>
+<p>U.S. Census Bureau, 2006-2010 American Community Survey 5-Year Estimates.</p>
+<p>U.S. Census Bureau, 2013-2017 American Community Survey 5-Year Estimates.</p>
 <p>Van Wilsem, Johan. Karin Whitebrood, Nan Dirk De Graaf. 2006. “Socioeconomic Dynamics of Neighborhoods and the Risk of Crime Victimization: A Multilevel Study of Improving, Declining, and Stable Areas in the Netherlands.” <em>Social Problems</em> 53(2):226-247.</p>
 <p>Zuberi, Anita. 2012. “Neighborhood Poverty and Children’s Exposure to Danger: Examining Gender Differences in Impacts of the Moving to Opportunity Experiment.” <em>Social Science Research</em> 41:788-801.</p>
 </div>

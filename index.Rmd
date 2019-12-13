@@ -5,7 +5,7 @@ author: "Olivia Delos"
 ---
 
 # Introduction
-Crime rates have decreased for all types of crime since the 1990s, although most considerably for violent crimes (Papachristos 2013). However, crime rates vary depending on the social composition of a neighborhood. Disadvantaged neighborhoods are disproportionately low-income with weak social ties and high residential instability, attributes often correlated with crime (Zuberi 2012). The concentration of poverty, violence, and high policing in disadvantaged neighborhoods hinders residents’ ability to form social cohesion and community organization, increasing residents’ risk of victimization (Van Wilsem, Wittebrood, De Graaf 2006). Violent crime, in particular, is more prevalent in urban, disadvantaged neighborhoods (Friedson and Sharkey 2015).  However, few studies have examined whether the relationship between neighborhood disadvantage and crime varies by crime type. It is also well known that neighborhoods with a high immigrant population have lower crime rates (Adelman 2019). Buffalo's Waterfront Area has a high immigrant population and has undergone recent developments aimed at resurgence (Adelman 2019). Elmwood Village has also seen continuous development. In order to determine whether recent developments infuence crime rates, I look at crime trends for these two areas as well as the entire city of Buffalo. By examining census data and crime data I answer four questions: 1) Has crime decreased in Buffalo, NY since 2010? 2) If so, does the decrease differ by crime type? 3) Has this decrease occurred more substantially in areas with a high immigrant population or areas that have undergone recent development (Elmwood Village and Waterfront Area)? 4) Does the relationship between median income and crime vary by crime type? I measure neighborhood disadvantage using census tract data in Buffalo, New York on median income from the 2010 and 2017 ACS. Crime data comes from OpenData Buffalo and can be broken into five categories: assault, breaking and entering, homicide, sexual offenses, and theft. I hypothesize that there will be a decrease in crime rates from 2010 to 2017 for all tracts, but more noticeably for violent crimes, as opposed to property crimes and that this decrease will be more substantial when examining developed neighborhoods. I also predict that the relationship between median income and crime will be greater for violent crimes. 
+Crime rates have decreased for all types of crime since the 1990s, although most considerably for violent crimes (Papachristos 2013). However, crime rates vary depending on the social composition of a neighborhood. Disadvantaged neighborhoods are disproportionately low-income with weak social ties and high residential instability, attributes often correlated with crime (Zuberi 2012). The concentration of poverty, violence, and high policing in disadvantaged neighborhoods hinders residents’ ability to form social cohesion and community organization, increasing residents’ risk of victimization (Van Wilsem, Wittebrood, De Graaf 2006). Violent crime, in particular, is more prevalent in urban, disadvantaged neighborhoods (Friedson and Sharkey 2015).  However, few studies have examined whether the relationship between neighborhood disadvantage and crime varies by crime type. It is also well known that neighborhoods with a high immigrant population have lower crime rates (Adelman, Ozgen and Rabii 2019). Buffalo's Waterfront Area has a high immigrant population and has undergone recent developments aimed at resurgence (Adelman et al. 2019). Elmwood Village has also seen continuous development. In order to determine whether recent developments infuence crime rates, I look at crime trends for these two areas as well as the entire city of Buffalo. By examining census data and crime data I answer four questions: 1) Has crime decreased in Buffalo, NY since 2010? 2) If so, does the decrease differ by crime type? 3) Has this decrease occurred more substantially in areas with a high immigrant population or areas that have undergone recent development (Elmwood Village and Waterfront Area)? 4) Does the relationship between median income and crime vary by crime type? I measure neighborhood disadvantage using census tract data in Buffalo, New York on median income from the 2010 and 2017 ACS. Crime data comes from OpenData Buffalo and can be broken into five categories: assault, breaking and entering, homicide, sexual offenses, and theft. I hypothesize that there will be a decrease in crime rates from 2010 to 2017 for all tracts, but more noticeably for violent crimes, as opposed to property crimes and that this decrease will be more substantial when examining developed neighborhoods. I also predict that the relationship between median income and crime will be greater for violent crimes. 
 
 
 # Materials and methods
@@ -333,7 +333,7 @@ summary(Hom2017_reg)
 # Results
 
 
-##5. Create figures
+## 5. Create figures
 Plot median income and crime per capita for 2010 and 2017
 
 ```{r, fig.width=10, fig.height=5, fig.cap="Crime Over Time"}
@@ -380,7 +380,7 @@ mapcrime17 <- ggplot(cpp2017) + geom_sf(aes(fill = AvgCPC)) +
 grid.arrange(mapinc17, mapcrime17, nrow = 1)
 ```
 
-## Plot crime by type
+### Plot crime by type
 
 ```{r,fig.width=10, fig.height=5, fig.cap="Homicide 2010"}
 
@@ -489,9 +489,9 @@ Friedson, Michael and Patrick Sharkey. 2015. "Violence and Neighborhood Disadvan
 
 Papachristos, Andrew V. 2013. "48 Years of Crime in Chicago: A Descriptive Analysis of Serious Crime Trends from 1965 to 2013." *Institution for Social and Policy Studies*. 
 
-U.S. Census Bureau, 2006-2010 American Community Survey 5-Year Estimates
+U.S. Census Bureau, 2006-2010 American Community Survey 5-Year Estimates.
 
-U.S. Census Bureau, 2013-2017 American Community Survey 5-Year Estimates
+U.S. Census Bureau, 2013-2017 American Community Survey 5-Year Estimates.
 
 Van Wilsem, Johan. Karin Whitebrood, Nan Dirk De Graaf. 2006. "Socioeconomic Dynamics of Neighborhoods and the Risk of Crime Victimization: A Multilevel Study of Improving, Declining, and Stable Areas in the Netherlands." *Social Problems* 53(2):226-247.
 
