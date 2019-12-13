@@ -481,11 +481,11 @@ In support of my hypothesis, median income has a higher correlation with violent
 
 # References
 
-OpenDataBuffalo. *Crime Incidents* (https://data.buffalony.gov/Public-Safety/Crime-Incidents/d6g9-xbgu).
-
 Adelman, Robert M., Aysegul Balta Ozgen, and Watoii Rabii. 2019. "Buffalo's West Side Story: Migration, Gentrification, and Neighborhood Change." *City & Community* 1-22.
 
 Friedson, Michael and Patrick Sharkey. 2015. "Violence and Neighborhood Disadvantage after the Crime Decline." *The American Academy of Political & Social Science* 660. 
+
+OpenDataBuffalo. *Crime Incidents* (https://data.buffalony.gov/Public-Safety/Crime-Incidents/d6g9-xbgu).
 
 Papachristos, Andrew V. 2013. "48 Years of Crime in Chicago: A Descriptive Analysis of Serious Crime Trends from 1965 to 2013." *Institution for Social and Policy Studies*. 
 
